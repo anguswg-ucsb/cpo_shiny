@@ -1,0 +1,195 @@
+---
+title: "CO Water Rights"
+runtime: shiny
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+---
+
+```{r setup, include = FALSE}
+# Shiny & Flexdashboard packages
+library(shiny)
+library(flexdashboard)
+
+# Data manipulation
+# library(tidyr)
+# library(dplyr)
+library(magrittr)
+
+# Mapping packages
+library(leaflet)
+library(leafem)
+# library(sf)
+
+# water data
+# library(nhdplusTools)
+# library(cdssr)
+
+# Load function data_utils.R file
+source('utils.R')
+```
+
+```{r context="server"}
+
+# base leaflet map
+output$baseMap       <- renderLeaflet({ basemap() })
+
+```
+
+Row
+-------------------------------------
+    
+### Map 1
+```{r}
+leaflet::leafletOutput("baseMap")
+```
+
+```{r context="server"}
+map_click <- shiny::reactive({
+   input$baseMap_click
+})
+```
+
+### Coords 
+```{r}
+shiny::verbatimTextOutput("mapCoords")
+```
+
+```{r context="server"}
+
+# render district value box at start
+output$mapCoords <- shiny::renderPrint({
+  print(data.frame(
+    lat = map_click()$lat,
+    lng = map_click()$lng
+    )
+    )
+})
+
+```
+
+```{r context="server"}
+# Clicking on map 1 outputs Value boxes on both pages + catchment polygons + Dat table + success panel
+# observeEvent(input$districtMapMLR_click, {
+shiny::observeEvent(input$baseMap_click, {
+
+   # # if(!is.null(input$districtMapMLR_click)) {
+   #    click <- input$districtMapMLR_click %>%
+   #      data.frame() %>%
+   #      dplyr::select(lat,lng)
+      # print(click)
+
+      pt <- sf::st_as_sf(
+                data.frame(
+                  lat = map_click()$lat,
+                  lng = map_click()$lng
+                  ),
+                coords = c("lng", "lat"),
+                crs = 4326
+                )
+  # 38.38628 -103.8057
+      # pt <- sf::st_as_sf(
+      #           data.frame(
+      #             lat = "38.38628",
+      #             lng =  "-103.8057"
+      #             ),
+      #           coords = c("lng", "lat"),
+      #           crs = 4326
+      #           )
+
+          # # District number value box
+          # output$districtBoxMLR <- renderValueBox(
+          #   valueBox(
+          #     value = paste0("District: ", mlr_district()),
+          #     color = "success"
+          #     )
+          #   )
+          # # pal <- colorNumeric("YlOrRd", domain = shp$variance_rsq, n = 21)
+          # pal <- colorNumeric(viridisLite::magma(n = 30, direction = -1), domain = shp$var_sensitivity_norm, reverse = F, n = 30)
+          # # pal <- colorNumeric("Spectral", domain = shp$var_sensitivity_norm, reverse = T, n = 30)
+          # 
+          # bb = shp %>%
+          #     st_bbox() %>%
+          #     st_as_sfc() %>%
+          #     st_transform(4326) %>%
+          #     st_as_sf()
+          # # Map 2 fly to bounds
+          # bounds <- st_bbox(bb) %>%
+          #     st_as_sfc() %>%
+          #     st_buffer(0.009) %>%
+          #     st_bbox() %>%
+          #     as.vector()
+          
+          # buffer to search area for NHD features
+          buff <- sf::st_buffer(pt, 5000)
+          
+          # buffer bounds
+          bounds <- 
+            # buff %>% 
+            pt %>% 
+            sf::st_buffer(5250) %>% 
+            sf::st_bbox() %>%
+            as.vector()
+          
+          # Get flowlines and catchment geometries
+          area_nhd <- nhdplusTools::get_nhdplus(
+            AOI = buff,
+            realization = c("flowline", "catchment")
+            )
+          
+          # NHD flowlines
+          fline <- area_nhd$flowline
+          
+          # NHD Catchment
+          catch <- area_nhd$catchment
+          
+      
+          leaflet::leafletProxy("baseMap") %>%
+              leaflet::clearMarkers() %>%
+              leaflet::clearShapes() %>%
+              leaflet::addPolygons(
+                data        = catch,
+                color       = "grey",
+                opacity     = 0.8, 
+                fillColor   = "white",
+                fillOpacity = 0.5,
+                stroke      = TRUE
+                ) %>%
+              leaflet::addPolylines(
+                data        = fline,
+                color       = "dodgerblue",
+                opacity     = 1,
+                fillColor   = "dodgerblue",
+                fillOpacity = 1
+                ) %>% 
+              leaflet::addCircleMarkers(
+                data = pt
+                ) %>% 
+              leaflet::flyToBounds(bounds[1], bounds[2], bounds[3], bounds[4])
+              # addPolygons(
+              #       data = shp,
+              #       color = "black",
+              #       opacity = 1,
+              #       fillOpacity = 0.7,
+              #       fillColor = ~pal(var_sensitivity_norm),
+              #       weight = 2,
+              #       label          = ~paste0("District: ", DISTRICT),
+              #       layerId = ~DISTRICT,
+              #       labelOptions = labelOptions(
+              #         noHide = F,
+              #         # direction = 'center',
+              #         # textOnly = F)
+              #         style = list(
+              #           "color" = "black",
+              #           "font-weight" = "1000")
+              #     )
+              #   )
+       })
+```
+
+
+
+
+
+
