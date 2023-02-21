@@ -1,15 +1,7 @@
-# *************************
-# ---- leaflet basemap ----
-# *************************
+
+# leaflet basemap 
 basemap <- function() {
-  # pal = colorNumeric("inferno", reverse= TRUE, domain = today$size, n = 50)
-  # pal2 <- colorNumeric("inferno", reverse = TRUE, domain = today$cases, n = 50)
-  # pal_fact <- colorFactor(
-  #   c("darkorange", "lightgreen"),
-  #   # topo.colors(5),
-  #   domain = shp$BASIN
-  #         )
-  
+
   leaflet::leaflet() %>%
     leaflet::addProviderTiles(providers$Esri.NatGeoWorldMap, group = "Nat Geo Topographic2") %>%
     leaflet::addScaleBar("bottomleft") %>%
@@ -36,14 +28,11 @@ basemap <- function() {
   #       "color" = "black",
   #       "font-weight" = "1000")
   #   )
-  # ) %>%
+  # ) 
   
 }
 
-# ********************************************
-# ---- Get Water right Net Amounts points ----
-# ********************************************
-
+# Get Water right Net Amounts points 
 get_wr_pts <- function(
     x, 
     buffer,
@@ -176,10 +165,66 @@ get_nearest_pts <- function(
   min_pt$stream_lvl <- min_fline$streamleve
   max_pt$stream_lvl <- max_fline$streamleve
   
+  # add upstream/downstream columns
+  min_pt$plot_str <- paste0("WDID: ", min_pt$wdid, " - (downstream)")
+  max_pt$plot_str <- paste0("WDID: ", max_pt$wdid, " - (upstream)")
+  
   # bind the max and min points to single sf object
   end_pts <- rbind(min_pt, max_pt)
   
   return(end_pts)
+  
+}
+get_main_stem <- function(
+    flowlines = NULL
+) {
+  # flowlines = fline
+  # pts       = wr_pts
+  
+  # check if no arguments are provided
+  if(any(is.null(flowlines))) {
+    
+    stop("Invalid or missing 'flowlines' arguments")
+    
+  }
+  
+  # reproject flowlines and pts to projected CRS (5070)
+  flowlines <- sf::st_transform(flowlines, 5070)
+  
+  # unique terminal paths
+  uterm_paths <- unique(flowlines$terminalpa)
+  
+  # get sum total of each set of flowlines for each terimal path
+  path_lengths <- lapply(1:length(uterm_paths), function(i) {
+    
+    fl <- flowlines[flowlines$terminalpa == uterm_paths[i], ]
+    
+    data.frame(
+      terminalpa = as.character(uterm_paths[i]),
+      length     = sum(fl$lengthkm, na.rm = T)
+    )
+    
+  })
+  
+  # bind rows
+  path_lengths <- do.call(rbind, path_lengths)
+  
+  # get terminal path ID of longest segments of rivers
+  term_pa <- path_lengths[path_lengths$length == max(path_lengths$length), ]$terminalpa
+  
+  # flow lines associated with terminal paths of more represented stream flowlines
+  fls <- flowlines[flowlines$terminalpa == term_pa, ]
+  
+  # lowest levelpath stream (mainstem)
+  main_stem <- fls[fls$streamleve == min(fls$streamleve), ]
+  
+  # plot(flowlines$geometry)
+  # plot(main_stem$geometry, col = "red", add = T)
+  
+  # min hydrosequence (downstream) flow line on lowest levelpath stream (mainstem)
+  # min_fline <- main_stem[main_stem$hydroseq == min(main_stem$hydroseq), ]
+  
+  return(main_stem)
   
 }
 
@@ -234,6 +279,7 @@ get_calls <- function(
       calls$structure_type <- df$structure_type[i]
       calls$water_source   <- df$water_source[i]
       calls$position       <- df$position[i]
+      calls$plot_str       <- df$plot_str[i]
       calls$comid          <- df$comid[i]
       calls$hydroseq       <- df$hydroseq[i]
       calls$stream_lvl     <- df$stream_lvl[i]
@@ -266,25 +312,168 @@ make_calls_plot <- function(df) {
   admin_plot <-
     df %>% 
     ggplot2::ggplot() +
-    ggplot2::geom_line(ggplot2::aes(x = datetime, y = priority_date, color = analysis_wdid)) +
+    ggplot2::geom_line(
+      # ggplot2::aes(x = datetime, y = priority_date, color = analysis_wdid),
+      ggplot2::aes(x = datetime, y = priority_date),
+      color = "red"
+      ) +
     ggplot2::labs(
       x     = "Date",
-      y     = "Priority Date",
-      color = "WDID"
+      y     = "Priority Date"
+      # color = "WDID"
       ) +
-    ggplot2::facet_wrap(~position, nrow = 2)+ 
+    ggplot2::facet_wrap(~plot_str, nrow = 2)+ 
     ggplot2::theme_bw()
   
   return(admin_plot)
   
   
 }
+# 
+# # 40.66392 -105.4837
+# pt <- sf::st_as_sf(
+#   data.frame(
+#     lat = "40.66392",
+#     lng =  "-105.4837"
+#   ),
+#   coords = c("lng", "lat"),
+#   crs = 4326
+# )
+# 
+# # buffer to search area for NHD features
+# # buff <- sf::st_buffer(pt, 1500)
+# buff <- sf::st_transform(
+#   sf::st_buffer(
+#     sf::st_transform(pt, 5070),
+#     1609.3*7
+#   ),
+#   4326
+# )
+# # sf::st_transform(pt, 5070)
+# # # buffer bounds
+# bounds <-
+#   # buff %>%
+#   buff %>%
+#   # sf::st_buffer(5250) %>%
+#   sf::st_bbox() %>%
+#   as.vector()
+# 
+# # Get flowlines and catchment geometries
+# area_nhd <- nhdplusTools::get_nhdplus(
+#   AOI         = buff,
+#   realization = c("flowline", "catchment"),
+#   streamorder = 3
+# )
+# # area_nhd$flowline %>% 
+# #   dplyr::mutate(
+# #     streamorde = as.character(streamorde),
+# #     streamleve = as.character(streamleve)
+# #                 ) %>% 
+# #   sf::st_buffer(1609.3) %>% 
+# # ggplot2::ggplot() +
+# #   ggplot2::geom_sf(ggplot2::aes(color = streamleve))
+# 
+# # NHD flowlines
+# fline <- area_nhd$flowline
+# 
+# # NHD Catchment
+# catch <- area_nhd$catchment
+# 
+# min_fline <- sf::st_as_sf(
+#   sf::st_cast(
+#     sf::st_union(
+#       sf::st_buffer(
+#         sf::st_transform(
+#           fline[fline$streamleve == min(fline$streamleve), ],
+#           5070
+#         ),
+#         1609.3
+#       )
+#     ),
+#     "POLYGON"
+#   )
+# )
+# 
+# # get Water right points
+# wr_pts <- get_wr_pts(x = min_fline, buffer = 25)
+# 
+# # # Get flowlines and catchment geometries
+# # area_nhd <- nhdplusTools::get_nhdplus(
+# #   AOI         = buff,
+# #   realization = c("flowline", "catchment"),
+# #   streamorder = 3
+# #   )
+# # 
+# # # NHD flowlines
+# # fline <- area_nhd$flowline
+# # 
+# # # NHD Catchment
+# # catch <- area_nhd$catchment
+# 
+# # mapview::mapview(buff) + pt + wr_pts + catch + fline
+# 
+# # # get points nearest to the furthest upstream and downstream main stem river segments
+# # end_pts <- get_nearest_pts(
+# #               flowlines = fline,
+# #               pts       = wr_pts
+# #               )
+# 
+# # get points nearest to the furthest upstream and downstream main stem river segments
+# main_stem <- get_main_stem(
+#   flowlines = fline
+# )
+# 
+# # get points nearest to the furthest upstream and downstream main stem river segments
+# end_pts <- get_nearest_pts(
+#   flowlines = main_stem,
+#   pts       = wr_pts
+# )
+# 
+# # get water right calls timeseries
+# call_df <- get_calls(
+#   df         = end_pts,
+#   start_date = Sys.Date() - 182,
+#   end_date   = Sys.Date()
+# )
+# 
+# make_calls_plot(df = call_df)
+# 
+# wr_pts$appropriation_date
 
 
-
-
-
-
+make_date_map <- function(lines, pts) {
+  # lines <- main_stem  
+  # pts <- wr_pts
+  
+  bin_wr <- 
+    pts %>% 
+    dplyr::mutate(
+      bin_date = dplyr::case_when(
+        appropriation_date <= "1850-01-01"                                      ~ "< 1850",
+        appropriation_date >  "1850-01-01" & appropriation_date <= "1900-01-01" ~ "1850 - 1900",
+        appropriation_date >  "1900-01-01" & appropriation_date <= "1950-01-01" ~ "1900- 1950",
+        appropriation_date >  "1950-01-01" & appropriation_date <= "2000-01-01" ~ "1950 - 2000",
+        appropriation_date >  "2000-01-01"                                      ~ "2000 - present"
+      )
+    ) 
+  
+    date_plot <- 
+      ggplot2::ggplot() +
+      ggplot2::geom_sf(data = lines) +
+      ggplot2::geom_sf(data = bin_wr,
+                       ggplot2::aes(color = bin_date), 
+                       size = 3) +
+      ggplot2::labs(
+        title = "Binned Appropriation Dates",
+        color = "Appropriation dates"
+        ) +
+      ggplot2::theme_bw() +
+      ggplot2::theme(
+        plot.title = ggplot2::element_text(hjust = 0.5)
+        )
+    
+    return(date_plot)
+}
 
 
 

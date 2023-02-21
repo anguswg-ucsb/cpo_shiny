@@ -74,7 +74,7 @@ shiny::observeEvent(input$baseMap_click, {
       # 39.7792 -105.7214
       # # # 39.445 -105.176
       # # # 40.27937 -105.8168
-      # 40.66392 -105.4837
+      # # 40.66392 -105.4837
       # pt <- sf::st_as_sf(
       #           data.frame(
       #             lat = "40.66392",
@@ -139,7 +139,7 @@ shiny::observeEvent(input$baseMap_click, {
                         )
           
           # get Water right points
-          wr_pts <- get_wr_pts(x = min_fline, buffer = 25)
+          wr_pts <- get_wr_pts(x = min_fline, buffer = 10)
           
           # # Get flowlines and catchment geometries
           # area_nhd <- nhdplusTools::get_nhdplus(
@@ -156,21 +156,46 @@ shiny::observeEvent(input$baseMap_click, {
           
           # mapview::mapview(buff) + pt + wr_pts + catch + fline
           
+          # # get points nearest to the furthest upstream and downstream main stem river segments
+          # end_pts <- get_nearest_pts(
+          #               flowlines = fline,
+          #               pts       = wr_pts
+          #               )
+
+          # get points nearest to the furthest upstream and downstream main stem river segments
+          main_stem <- get_main_stem(
+                        flowlines = fline
+                        )
+          
           # get points nearest to the furthest upstream and downstream main stem river segments
           end_pts <- get_nearest_pts(
-                        flowlines = fline,
+                        flowlines = main_stem,
                         pts       = wr_pts
                         )
           
           # get water right calls timeseries
-          call_df <- get_calls(df = end_pts)
+          call_df <- get_calls(
+            df         = end_pts,
+            start_date = Sys.Date() - 365,
+            end_date   = Sys.Date()
+            )
           
           # call_plot <- make_calls_plot(df = call_df)
           
-          
-          output$adminDatePlot <- shiny::renderPlot({
+          # render call date over time plot
+          output$callDatePlot <- shiny::renderPlot({
             
-            make_calls_plot(df = call_df)
+             make_calls_plot(df = call_df)
+          
+            })
+          
+           # render admin date map
+           output$adminDatePlot <- shiny::renderPlot({
+            
+              make_date_map(
+                lines = main_stem, 
+                pts   = wr_pts
+                )
           
             })
            # mapview::mapview(buff) + pt + wr_pts + catch + fline
@@ -189,26 +214,7 @@ shiny::observeEvent(input$baseMap_click, {
             # mapview::mapview(min_fline, color = "orange") +
             # mapview::mapview(max_fline, color = "orange")
           
-          # fline %>% 
-          #   dplyr::mutate(streamleve = as.character(streamleve)) %>%
-          # # dplyr::mutate(streamleve = factor(streamleve, levels = c( "3", "4", "5", "6"))) %>% 
-          #   ggplot2::ggplot() +
-          #   ggplot2::geom_sf(ggplot2::aes(color = streamleve))
-          #   # buff
-          # gnis_flines <-
-          #   huc_flines %>%
-          #   dplyr::filter(streamorde >= 4) %>%
-          #   # dplyr::group_by(gnis_id) %>%
-          #   dplyr::group_by(streamorde, gnis_id) %>%
-          #   dplyr::filter(hydroseq == min(hydroseq) |hydroseq == max(hydroseq)) %>%
-          #   dplyr::ungroup() %>%
-          #   nhdplusTools::get_node(position = "end") %>%
-          #   dplyr::bind_cols(dplyr::select(sf::st_drop_geometry(end_flines),
-          #                                  huc8, comid, hydroseq, gnis_id)) %>%
-          #   dplyr::relocate(huc8, comid, hydroseq, gnis_id, geometry) %>%
-          #   # dplyr::filter(huc8 %in%  c("10190005", "10190006")) %>%
-          #   # dplyr::filter(gnis_id == "178354") %>%
-          #   sf::st_transform(5070)
+       
           
           leaflet::leafletProxy("baseMap") %>%
               leaflet::clearMarkers() %>%
@@ -222,10 +228,10 @@ shiny::observeEvent(input$baseMap_click, {
                 stroke      = FALSE
                 ) %>%
               leaflet::addPolylines(
-                data        = fline,
+                data        = fline[fline$streamleve != min(fline$streamleve), ],
                 stroke      = TRUE,
                 color       = "dodgerblue",
-                opacity     = 1
+                opacity     = 0.7
                 # fillColor   = "dodgerblue",
                 # fillOpacity = 1
                 ) %>% 
@@ -233,12 +239,12 @@ shiny::observeEvent(input$baseMap_click, {
                 data        = fline[fline$streamleve == min(fline$streamleve), ],
                 stroke      = TRUE,
                 color       = "navy",
-                opacity     = 1
+                opacity     = 0.9
                 # fillColor   = "navy",
                 # fillOpacity = 1
                 ) %>% 
               leaflet::addCircleMarkers(
-                data        = wr_pts,
+                data        = wr_pts[!wr_pts$wdid %in% end_pts$wdid, ],
                 radius      = 7,
                 stroke      = FALSE,
                 # color       = "black",
@@ -256,24 +262,6 @@ shiny::observeEvent(input$baseMap_click, {
                 fillOpacity = 0.7
                 ) %>% 
               leaflet::flyToBounds(bounds[1], bounds[2], bounds[3], bounds[4])
-              # addPolygons(
-              #       data = shp,
-              #       color = "black",
-              #       opacity = 1,
-              #       fillOpacity = 0.7,
-              #       fillColor = ~pal(var_sensitivity_norm),
-              #       weight = 2,
-              #       label          = ~paste0("District: ", DISTRICT),
-              #       layerId = ~DISTRICT,
-              #       labelOptions = labelOptions(
-              #         noHide = F,
-              #         # direction = 'center',
-              #         # textOnly = F)
-              #         style = list(
-              #           "color" = "black",
-              #           "font-weight" = "1000")
-              #     )
-              #   )
        })
 ```
 
@@ -300,11 +288,12 @@ Row
     
 ### ggplot
 ```{r}
-shiny::plotOutput("adminDatePlot")
+shiny::plotOutput("callDatePlot")
 ```
 
-```{r context="server"}
-
+### Binned date map
+```{r}
+shiny::plotOutput("adminDatePlot")
 ```
 
 
