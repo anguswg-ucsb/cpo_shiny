@@ -32,6 +32,20 @@ basemap <- function() {
   
 }
 
+get_us_net <- function(pt, distance) {
+  
+  # comid_pt <- dataRetrieval::findNLDI(location = pt)
+  
+  um_net <- nhdplusTools::navigate_network(
+    start       = dataRetrieval::findNLDI(location = pt),
+    mode        = "UM",
+    distance_km = distance
+  )
+  
+  return(um_net)
+  
+}
+
 # Get Water right Net Amounts points 
 get_wr_pts <- function(
     x, 
@@ -85,14 +99,10 @@ get_wr_pts <- function(
   
   return(wrs)
 }
-
-
 get_nearest_pts <- function(
     flowlines = NULL, 
     pts       = NULL
 ) {
-  # flowlines = fline
-  # pts       = wr_pts
 
   # check if no arguments are provided
   if(any(is.null(flowlines), is.null(pts))) {
@@ -105,45 +115,20 @@ get_nearest_pts <- function(
   flowlines <- sf::st_transform(flowlines, 5070)
   pts       <- sf::st_transform(pts, 5070)
   
-  # unique terminal paths
-  uterm_paths <- unique(flowlines$terminalpa)
-  
-  # get sum total of each set of flowlines for each terimal path
-  path_lengths <- lapply(1:length(uterm_paths), function(i) {
-    
-    fl <- flowlines[flowlines$terminalpa == uterm_paths[i], ]
-  
-    data.frame(
-      terminalpa = as.character(uterm_paths[i]),
-      length     = sum(fl$lengthkm, na.rm = T)
-    )
-    
-    })
-  
-  # bind rows
-  path_lengths <- do.call(rbind, path_lengths)
-  
-  # get terminal path ID of longest segments of rivers
-  term_pa <- path_lengths[path_lengths$length == max(path_lengths$length), ]$terminalpa
-
-  # flow lines associated with terminal paths of more represented stream flowlines
-  fls <- flowlines[flowlines$terminalpa == term_pa, ]
-
-  # lowest levelpath stream (mainstem)
-  main_stem <- fls[fls$streamleve == min(fls$streamleve), ]
-  
-  # plot(flowlines$geometry)
-  # plot(main_stem$geometry, col = "red", add = T)
-
   # min hydrosequence (downstream) flow line on lowest levelpath stream (mainstem)
-  min_fline <- main_stem[main_stem$hydroseq == min(main_stem$hydroseq), ]
+  min_fline <- flowlines[flowlines$hydroseq == min(flowlines$hydroseq), ]
   
   # max hydrosequence (upstream) flow line on lowest levelpath stream (mainstem)
-  max_fline <- main_stem[main_stem$hydroseq == max(main_stem$hydroseq), ]
+  max_fline <- flowlines[flowlines$hydroseq == max(flowlines$hydroseq), ]
+  
+  end_pt   <- nhdplusTools::get_node(min_fline, position = "end")
+  start_pt <- nhdplusTools::get_node(max_fline, position = "start")
+  
+  # mapview::mapview(end_pt) + start_pt + max_fline + min_fline + flowlines + pts
   
   # index of points nearest to min and max hydroseq of mainnstem
-  near_min <- sf::st_nearest_feature(min_fline, pts)
-  near_max <- sf::st_nearest_feature(max_fline, pts)
+  near_min <- sf::st_nearest_feature(end_pt, pts)
+  near_max <- sf::st_nearest_feature(start_pt, pts)
   
   # nearest WDIDs to most downstream points of river segments
   min_pt  <- sf::st_transform(pts[near_min, ], 4326)
@@ -172,9 +157,101 @@ get_nearest_pts <- function(
   # bind the max and min points to single sf object
   end_pts <- rbind(min_pt, max_pt)
   
+  # mapview::mapview(end_pt) +  mapview::mapview(min_pt, color = "red") +  mapview::mapview(max_pt, color = "green") + start_pt + max_fline + min_fline + flowlines
+
   return(end_pts)
   
 }
+
+# get_nearest_pts <- function(
+#     flowlines = NULL, 
+#     pts       = NULL
+# ) {
+#   # flowlines = fline
+#   # pts       = wr_pts
+# 
+#   # check if no arguments are provided
+#   if(any(is.null(flowlines), is.null(pts))) {
+#     
+#     stop("Invalid or missing 'flowlines' or 'pts' arguments")
+#     
+#   }
+#   
+#   # reproject flowlines and pts to projected CRS (5070)
+#   flowlines <- sf::st_transform(flowlines, 5070)
+#   pts       <- sf::st_transform(pts, 5070)
+#   
+#   # unique terminal paths
+#   uterm_paths <- unique(flowlines$terminalpa)
+#   
+#   # get sum total of each set of flowlines for each terimal path
+#   path_lengths <- lapply(1:length(uterm_paths), function(i) {
+#     
+#     fl <- flowlines[flowlines$terminalpa == uterm_paths[i], ]
+#   
+#     data.frame(
+#       terminalpa = as.character(uterm_paths[i]),
+#       length     = sum(fl$lengthkm, na.rm = T)
+#     )
+#     
+#     })
+#   
+#   # bind rows
+#   path_lengths <- do.call(rbind, path_lengths)
+#   
+#   # get terminal path ID of longest segments of rivers
+#   term_pa <- path_lengths[path_lengths$length == max(path_lengths$length), ]$terminalpa
+# 
+#   # flow lines associated with terminal paths of more represented stream flowlines
+#   fls <- flowlines[flowlines$terminalpa == term_pa, ]
+# 
+#   # lowest levelpath stream (mainstem)
+#   main_stem <- fls[fls$streamleve == min(fls$streamleve), ]
+#   
+#   # plot(flowlines$geometry)
+#   # plot(main_stem$geometry, col = "red", add = T)
+# 
+#   # min hydrosequence (downstream) flow line on lowest levelpath stream (mainstem)
+#   min_fline <- main_stem[main_stem$hydroseq == min(main_stem$hydroseq), ]
+#   
+#   # max hydrosequence (upstream) flow line on lowest levelpath stream (mainstem)
+#   max_fline <- main_stem[main_stem$hydroseq == max(main_stem$hydroseq), ]
+#   
+#   # index of points nearest to min and max hydroseq of mainnstem
+#   near_min <- sf::st_nearest_feature(min_fline, pts)
+#   near_max <- sf::st_nearest_feature(max_fline, pts)
+#   
+#   # nearest WDIDs to most downstream points of river segments
+#   min_pt  <- sf::st_transform(pts[near_min, ], 4326)
+#   max_pt  <- sf::st_transform(pts[near_max, ], 4326)
+#   
+#   # add upstream/downstream columns
+#   min_pt$position <- "downstream"
+#   max_pt$position <- "upstream"
+#   
+#   # add comid columns
+#   min_pt$comid <- min_fline$comid
+#   max_pt$comid <- max_fline$comid
+#   
+#   # add hydroseq columns
+#   min_pt$hydroseq <- min_fline$hydroseq
+#   max_pt$hydroseq <- max_fline$hydroseq
+#   
+#   # add stream level columns
+#   min_pt$stream_lvl <- min_fline$streamleve
+#   max_pt$stream_lvl <- max_fline$streamleve
+#   
+#   # add upstream/downstream columns
+#   min_pt$plot_str <- paste0("WDID: ", min_pt$wdid, " - (downstream)")
+#   max_pt$plot_str <- paste0("WDID: ", max_pt$wdid, " - (upstream)")
+#   
+#   # bind the max and min points to single sf object
+#   end_pts <- rbind(min_pt, max_pt)
+#   
+#   return(end_pts)
+#   
+# }
+
 get_main_stem <- function(
     flowlines = NULL
 ) {
@@ -308,7 +385,23 @@ make_calls_plot <- function(df) {
   # convert dates to date type
   df$priority_date <- as.Date(df$priority_date)
   
-  
+  # df <- 
+  #   df %>% 
+  #   dplyr::mutate(
+  #     priority_date = dplyr::case_when(
+  #       is.na(priority_date) ~ max(priority_date),
+  #       TRUE                 ~ priority_date
+  #     )
+  #   )
+  # 
+  df <- 
+    df %>% 
+    dplyr::mutate(
+      priority_date = dplyr::case_when(
+        is.na(priority_date) ~ max(priority_date),
+        TRUE                 ~ priority_date
+      )
+    )
   admin_plot <-
     df %>% 
     ggplot2::ggplot() +
@@ -329,124 +422,20 @@ make_calls_plot <- function(df) {
   
   
 }
-# 
-# # 40.66392 -105.4837
-# pt <- sf::st_as_sf(
-#   data.frame(
-#     lat = "40.66392",
-#     lng =  "-105.4837"
-#   ),
-#   coords = c("lng", "lat"),
-#   crs = 4326
-# )
-# 
-# # buffer to search area for NHD features
-# # buff <- sf::st_buffer(pt, 1500)
-# buff <- sf::st_transform(
-#   sf::st_buffer(
-#     sf::st_transform(pt, 5070),
-#     1609.3*7
-#   ),
-#   4326
-# )
-# # sf::st_transform(pt, 5070)
-# # # buffer bounds
-# bounds <-
-#   # buff %>%
-#   buff %>%
-#   # sf::st_buffer(5250) %>%
-#   sf::st_bbox() %>%
-#   as.vector()
-# 
-# # Get flowlines and catchment geometries
-# area_nhd <- nhdplusTools::get_nhdplus(
-#   AOI         = buff,
-#   realization = c("flowline", "catchment"),
-#   streamorder = 3
-# )
-# # area_nhd$flowline %>% 
-# #   dplyr::mutate(
-# #     streamorde = as.character(streamorde),
-# #     streamleve = as.character(streamleve)
-# #                 ) %>% 
-# #   sf::st_buffer(1609.3) %>% 
-# # ggplot2::ggplot() +
-# #   ggplot2::geom_sf(ggplot2::aes(color = streamleve))
-# 
-# # NHD flowlines
-# fline <- area_nhd$flowline
-# 
-# # NHD Catchment
-# catch <- area_nhd$catchment
-# 
-# min_fline <- sf::st_as_sf(
-#   sf::st_cast(
-#     sf::st_union(
-#       sf::st_buffer(
-#         sf::st_transform(
-#           fline[fline$streamleve == min(fline$streamleve), ],
-#           5070
-#         ),
-#         1609.3
-#       )
-#     ),
-#     "POLYGON"
-#   )
-# )
-# 
-# # get Water right points
-# wr_pts <- get_wr_pts(x = min_fline, buffer = 25)
-# 
-# # # Get flowlines and catchment geometries
-# # area_nhd <- nhdplusTools::get_nhdplus(
-# #   AOI         = buff,
-# #   realization = c("flowline", "catchment"),
-# #   streamorder = 3
-# #   )
-# # 
-# # # NHD flowlines
-# # fline <- area_nhd$flowline
-# # 
-# # # NHD Catchment
-# # catch <- area_nhd$catchment
-# 
-# # mapview::mapview(buff) + pt + wr_pts + catch + fline
-# 
-# # # get points nearest to the furthest upstream and downstream main stem river segments
-# # end_pts <- get_nearest_pts(
-# #               flowlines = fline,
-# #               pts       = wr_pts
-# #               )
-# 
-# # get points nearest to the furthest upstream and downstream main stem river segments
-# main_stem <- get_main_stem(
-#   flowlines = fline
-# )
-# 
-# # get points nearest to the furthest upstream and downstream main stem river segments
-# end_pts <- get_nearest_pts(
-#   flowlines = main_stem,
-#   pts       = wr_pts
-# )
-# 
-# # get water right calls timeseries
-# call_df <- get_calls(
-#   df         = end_pts,
-#   start_date = Sys.Date() - 182,
-#   end_date   = Sys.Date()
-# )
-# 
-# make_calls_plot(df = call_df)
-# 
-# wr_pts$appropriation_date
-
 
 make_date_map <- function(lines, pts) {
-  # lines <- main_stem  
+  # lines <- main_stem
   # pts <- wr_pts
-  
+  # lines = fline
+  # pts   = fline_pts
   bin_wr <- 
-    pts %>% 
+    pts %>%
+    dplyr::group_by(wdid) %>%
+    dplyr::mutate(
+      appropriation_date = as.Date(appropriation_date)
+    ) %>% 
+    dplyr::slice(which.min(appropriation_date)) %>% 
+    dplyr::ungroup() %>% 
     dplyr::mutate(
       bin_date = dplyr::case_when(
         appropriation_date <= "1850-01-01"                                      ~ "< 1850",
@@ -455,7 +444,7 @@ make_date_map <- function(lines, pts) {
         appropriation_date >  "1950-01-01" & appropriation_date <= "2000-01-01" ~ "1950 - 2000",
         appropriation_date >  "2000-01-01"                                      ~ "2000 - present"
       )
-    ) 
+    )  
   
     date_plot <- 
       ggplot2::ggplot() +

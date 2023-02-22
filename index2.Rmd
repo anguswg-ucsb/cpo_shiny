@@ -1,0 +1,390 @@
+---
+title: "CO Water Rights"
+runtime: shiny
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+---
+
+```{r setup, include = FALSE}
+# Shiny & Flexdashboard packages
+library(shiny)
+library(flexdashboard)
+
+# Data manipulation
+# library(tidyr)
+# library(dplyr)
+library(dplyr)
+library(ggplot2)
+
+# Mapping packages
+library(leaflet)
+library(leafem)
+library(dataRetrieval)
+# library(sf)
+
+# water data
+# library(nhdplusTools)
+# library(cdssr)
+
+# Load function data_utils.R file
+source('utils.R')
+```
+
+```{r context="server"}
+# water rights net amounts spatial data
+wr_pts <- readRDS("water_right_netamounts_pts.rds")
+
+# base leaflet map
+output$baseMap       <- renderLeaflet({ basemap() })
+
+```
+
+Row
+-------------------------------------
+    
+### Map 1
+```{r}
+leaflet::leafletOutput("baseMap")
+```
+
+```{r context="server"}
+map_click <- shiny::reactive({
+   input$baseMap_click
+})
+```
+
+```{r context="server"}
+# Clicking on map 1 outputs Value boxes on both pages + catchment polygons + Dat table + success panel
+# observeEvent(input$districtMapMLR_click, {
+shiny::observeEvent(input$baseMap_click, {
+
+   # # if(!is.null(input$districtMapMLR_click)) {
+   #    click <- input$districtMapMLR_click %>%
+   #      data.frame() %>%
+   #      dplyr::select(lat,lng)
+      # print(click)
+
+      pt <- sf::st_as_sf(
+                data.frame(
+                  lat = map_click()$lat,
+                  lng = map_click()$lng
+                  ),
+                coords = c("lng", "lat"),
+                crs = 4326
+                )
+          # 39.7792 -105.7214
+          # # # 39.445 -105.176
+          # # # 40.27937 -105.8168
+          # # 40.66392 -105.4837
+      # 40.69808 -105.6
+          # pt <- sf::st_as_sf(
+          #           data.frame(
+          #             lat = "40.69808",
+          #             lng =  "-105.6"
+          #             ),
+          #           coords = c("lng", "lat"),
+          #           crs = 4326
+          #           )
+
+          # buffer to search area for NHD features
+          # buff <- sf::st_buffer(pt, 1500)
+          # buff <- sf::st_transform(
+          #             sf::st_buffer(
+          #               sf::st_transform(pt, 5070),
+          #             1609.3*7
+          #             ),
+          #             4326
+          #             )
+          # sf::st_transform(pt, 5070)
+          # # # buffer bounds
+          # bounds <-
+          #   # buff %>%
+          #   buff %>%
+          #   # sf::st_buffer(5250) %>%
+          #   sf::st_bbox() %>%
+          #   as.vector()
+          
+          # # Get flowlines and catchment geometries
+          # area_nhd <- nhdplusTools::get_nhdplus(
+          #   AOI         = buff,
+          #   realization = c("flowline", "catchment"),
+          #   streamorder = 3
+          #   )
+          
+          #  # Get flowlines and catchment geometries
+          # area_nhd <- nhdplusTools::get_nhdplus(
+          #   AOI         = buff,
+          #   realization = c("flowline", "catchment"),
+          #   streamorder = 3
+          #   )
+          # area_nhd$flowline %>% 
+          #   dplyr::mutate(
+          #     streamorde = as.character(streamorde),
+          #     streamleve = as.character(streamleve)
+          #                 ) %>% 
+          #   sf::st_buffer(1609.3) %>% 
+          # ggplot2::ggplot() +
+          #   ggplot2::geom_sf(ggplot2::aes(color = streamleve))
+          
+          # # NHD flowlines
+          # fline <- area_nhd$flowline
+          # 
+          # # NHD Catchment
+          # catch <- area_nhd$catchment
+           
+          fline <- get_us_net(
+            pt       = pt, 
+            distance = 60
+            )
+          
+            # # buffer bounds
+          bounds <-
+            # buff %>%
+            fline %>%
+            # sf::st_buffer(5250) %>%
+            sf::st_bbox() %>%
+            as.vector()
+          
+          # # main stem of flowlines
+          # main_stem <- fline[fline$streamleve == min(fline$streamleve), ]
+          
+          # buffer around mainstem to get points within
+          fline_buff <- sf::st_as_sf(
+                          sf::st_cast(
+                            sf::st_union(
+                              sf::st_buffer(
+                                sf::st_transform(
+                                  fline,
+                                  5070
+                                  ),
+                                1609.3
+                                )
+                              ),
+                            "POLYGON"
+                            )
+                          )
+          
+          # Water rights points around main flowline
+          fline_pts <- sf::st_transform(
+                          sf::st_filter(
+                            sf::st_transform(
+                              wr_pts, 
+                              5070
+                              ) ,
+                            fline_buff
+                            ),
+                            4326
+                          )
+          
+          # get points nearest to the furthest upstream and downstream main stem river segments
+          end_pts <- get_nearest_pts(
+                        flowlines = fline,
+                        pts       = fline_pts
+                        )
+          
+          # get water right calls timeseries
+          call_df <- get_calls(
+                       df         = end_pts,
+                       start_date = Sys.Date() - 730,
+                       end_date   = Sys.Date()
+                       )
+          
+          # min_fline <- fline[fline$streamleve == min(fline$streamleve), ]
+          
+          # min_fline <- sf::st_as_sf(
+          #               sf::st_cast(
+          #                 sf::st_union(
+          #                   sf::st_buffer(
+          #                     sf::st_transform(
+          #                       fline[fline$streamleve == min(fline$streamleve), ],
+          #                       5070
+          #                       ),
+          #                     1609.3
+          #                     )
+          #                   ),
+          #                 "POLYGON"
+          #                 )
+          #               )
+          
+          # # get Water right points
+          # wr_pts <- get_wr_pts(x = min_fline, buffer = 10)
+          
+          # # Get flowlines and catchment geometries
+          # area_nhd <- nhdplusTools::get_nhdplus(
+          #   AOI         = buff,
+          #   realization = c("flowline", "catchment"),
+          #   streamorder = 3
+          #   )
+          # 
+          # # NHD flowlines
+          # fline <- area_nhd$flowline
+          # 
+          # # NHD Catchment
+          # catch <- area_nhd$catchment
+          
+          # mapview::mapview(buff) + pt + wr_pts + catch + fline
+          
+          # # get points nearest to the furthest upstream and downstream main stem river segments
+          # end_pts <- get_nearest_pts(
+          #               flowlines = fline,
+          #               pts       = wr_pts
+          #               )
+
+          # # get points nearest to the furthest upstream and downstream main stem river segments
+          # main_stem <- get_main_stem(
+          #               flowlines = fline
+          #               )
+          
+          # # get points nearest to the furthest upstream and downstream main stem river segments
+          # end_pts <- get_nearest_pts(
+          #               flowlines = main_stem,
+          #               pts       = wr_pts
+          #               )
+          
+          # # get water right calls timeseries
+          # call_df <- get_calls(
+          #   df         = end_pts,
+          #   start_date = Sys.Date() - 365,
+          #   end_date   = Sys.Date()
+          #   )
+          # 
+          # call_plot <- make_calls_plot(df = call_df)
+          
+          # render call date over time plot
+          output$callDatePlot <- shiny::renderPlot({
+
+             make_calls_plot(df = call_df)
+
+            })
+
+           # render admin date map
+           output$adminDatePlot <- shiny::renderPlot({
+            
+              make_date_map(
+                lines = fline, 
+                pts   = fline_pts
+                )
+          
+            })
+           # mapview::mapview(buff) + pt + wr_pts + catch + fline
+          # mapview::mapview(pt, col.regions = "red") + 
+          #   mapview::mapview(wr_pts, col.regions = "green") + 
+          #   mapview::mapview(catch, col.regions = "yellow")  + 
+          #   mapview::mapview(fline, color = "blue") +
+          #   buff
+          # lowest levelpath stream (mainstem)
+          
+          # mapview::mapview(pt, col.regions = "red") +
+          #   mapview::mapview(end_pts, col.regions = "purple") +
+          #   mapview::mapview(wr_pts, col.regions = "green") +
+          #   mapview::mapview(catch, col.regions = "yellow")  +
+          #   mapview::mapview(fline, color = "blue") 
+            # mapview::mapview(min_fline, color = "orange") +
+            # mapview::mapview(max_fline, color = "orange")
+          
+       
+          
+          leaflet::leafletProxy("baseMap") %>%
+              leaflet::clearMarkers() %>%
+              leaflet::clearShapes() %>%
+              # leaflet::addPolygons(
+              #   data        = catch,
+              #   color       = "grey",
+              #   opacity     = 0.8, 
+              #   fillColor   = "white",
+              #   fillOpacity = 0.5,
+              #   stroke      = FALSE
+              #   ) %>%
+              leaflet::addPolylines(
+                data        = fline,
+                stroke      = TRUE,
+                color       = "dodgerblue",
+                opacity     = 0.7
+                # fillColor   = "dodgerblue",
+                # fillOpacity = 1
+                ) %>% 
+              # leaflet::addPolylines(
+              #   data        = fline[fline$streamleve != min(fline$streamleve), ],
+              #   stroke      = TRUE,
+              #   color       = "dodgerblue",
+              #   opacity     = 0.7
+              #   # fillColor   = "dodgerblue",
+              #   # fillOpacity = 1
+              #   ) %>%
+             # leaflet::addPolylines(
+             #    data        = fline[fline$streamleve == min(fline$streamleve), ],
+             #    stroke      = TRUE,
+             #    color       = "navy",
+             #    opacity     = 0.9
+             #    # fillColor   = "navy",
+             #    # fillOpacity = 1
+             #    ) %>% 
+              # leaflet::addCircleMarkers(
+              #   data        = wr_pts[!wr_pts$wdid %in% end_pts$wdid, ],
+              #   radius      = 7,
+              #   stroke      = FALSE,
+              #   # color       = "black",
+              #   # opacity     = 1,
+              #   fillColor   = "black",
+              #   fillOpacity = 0.7
+              #   ) %>% 
+              leaflet::addCircleMarkers(
+                data        = fline_pts[!fline_pts$wdid %in% end_pts$wdid, ],
+                radius      = 7,
+                stroke      = FALSE,
+                color       = "black",
+                opacity     = 1,
+                fillColor   = "black",
+                fillOpacity = 0.7
+                ) %>% 
+              leaflet::addCircleMarkers(
+                data        = end_pts,
+                radius      = 7,
+                stroke      = FALSE,
+                # color       = "dodgerblue",
+                # opacity     = 1,
+                fillColor   = "red",
+                fillOpacity = 0.7
+                ) %>% 
+              leaflet::flyToBounds(bounds[1], bounds[2], bounds[3], bounds[4])
+       })
+
+
+```
+
+
+### Coords 
+```{r}
+shiny::verbatimTextOutput("mapCoords")
+```
+
+```{r context="server"}
+
+# render district value box at start
+output$mapCoords <- shiny::renderPrint({
+  print(data.frame(
+    lat = map_click()$lat,
+    lng = map_click()$lng
+    )
+    )
+})
+```
+
+Row
+-------------------------------------
+    
+### ggplot
+```{r}
+shiny::plotOutput("callDatePlot")
+```
+
+### Binned date map
+```{r}
+shiny::plotOutput("adminDatePlot")
+```
+
+
+
+
