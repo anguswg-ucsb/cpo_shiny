@@ -32,6 +32,37 @@ basemap <- function() {
   
 }
 
+# leaflet basemap w/ HUC4 shape
+huc_basemap <- function(shp) {
+  
+  leaflet::leaflet() %>%
+    leaflet::addProviderTiles(providers$Esri.NatGeoWorldMap, group = "Nat Geo Topographic2") %>%
+    leaflet::addScaleBar("bottomleft") %>%
+    leafem::addMouseCoordinates() %>%
+    leaflet::setView(lng = -105.6, lat = 39.7, zoom = 7) %>% 
+    leaflet::addPolygons(
+      data = shp,
+      fillColor = 'white',
+      # fillColor = 'grey',
+      # fillColor = ~pal_fact(BASIN),
+      fillOpacity = 0.7,
+      col = "black",
+      opacity = 1,
+      weight = 2.5,
+      label = ~paste0("HUC4: ", huc4),
+      layerId = ~huc4,
+      labelOptions = labelOptions(
+        noHide = F,
+        # direction = 'center',
+        # textOnly = F)
+        style = list(
+          "color" = "black",
+          "font-weight" = "1000")
+      )
+  )
+  
+}
+
 get_us_net <- function(pt, distance) {
   
   # comid_pt <- dataRetrieval::findNLDI(location = pt)
@@ -423,6 +454,56 @@ make_calls_plot <- function(df) {
   
 }
 
+make_calls_plot_year <- function(df) {
+  
+  # # replace NA dates with the max priority date on record
+  # df$priority_date <- ifelse(is.na(df$priority_date), max(df$priority_date, na.rm = T), df$priority_date)
+  # 
+  # # convert dates to date type
+  # df$priority_date <- as.Date(df$priority_date)
+  # df <- 
+  #   df %>% 
+  #   dplyr::mutate(
+  #     priority_date = dplyr::case_when(
+  #       is.na(priority_date) ~ max(priority_date),
+  #       TRUE                 ~ priority_date
+  #     )
+  #   )
+  # 
+  # df <- 
+  #   df %>% 
+  #   dplyr::mutate(
+  #     priority_date = dplyr::case_when(
+  #       is.na(priority_date) ~ max(priority_date),
+  #       TRUE                 ~ priority_date
+  #     )
+  #   )
+  admin_plot <-
+    df %>% 
+    dplyr::mutate(
+        day   = lubridate::yday(datetime),
+        year  = as.character(year),
+        month = as.character(month)
+        ) %>% 
+    ggplot2::ggplot() +
+    ggplot2::geom_line(
+      # ggplot2::aes(x = datetime, y = priority_date, color = analysis_wdid),
+      ggplot2::aes(x = day, y = priority_date, color = year)
+      # color = "red"
+    ) +
+    ggplot2::labs(
+      x     = "Date",
+      y     = "Priority Date"
+      # color = "WDID"
+    ) +
+    ggplot2::facet_wrap(~year)+
+    ggplot2::theme_bw()
+  
+  return(admin_plot)
+  
+  
+}
+
 make_date_map <- function(lines, pts) {
   # lines <- main_stem
   # pts <- wr_pts
@@ -464,6 +545,95 @@ make_date_map <- function(lines, pts) {
     return(date_plot)
 }
 
+# ***********************************
+# ---- convert admin no to dates ----
+# ***********************************
+
+admins_to_date <- function(
+    admin_no
+) {
+  
+  # admin_no <- dplyr::enquo(admin_no)
+  # tmp <- unname(sapply(admin_no, admins_to_date)
+  # unname(tmp)
+  # length(admin_no)
+  # admin_no <- "26302.20226"
+  
+  
+  # if NA is given return NA
+  if(is.na(admin_no) | admin_no == "NA") {
+    return(NA)
+  }
+  
+  # if NULL is given, return NULL
+  if(is.null(admin_no) | admin_no == "NULL") {
+    return(NULL)
+  }
+  
+  # if date is lowest possible admin number
+  if(admin_no == "0.00000") {
+    
+    admin_date <- "0001-01-01"
+    
+    return(admin_date)
+    
+  }
+  
+  # most senior water right date
+  most_senior_date <- as.Date("1849-12-31")
+  
+  # if admin number has "00000" digits after period
+  if(unlist(strsplit(admin_no, "[.]"))[2] == "00000") {
+    
+    # admin values left of period
+    aleft  <- as.numeric(unlist(strsplit(admin_no, "[.]"))[1])
+    
+    # admin date == appropriation date
+    admin_date <- as.character(most_senior_date + aleft)
+    
+    # if left side of admin number is NOT "00000"
+  } else {
+    
+    # split admin number to the left and right of period
+    aleft  <- as.numeric(unlist(strsplit(admin_no, "[.]"))[1])
+    aright <- as.numeric(unlist(strsplit(admin_no, "[.]"))[2])
+    
+    # prior adjudication date
+    prior_adjx  <- as.character(most_senior_date + aleft)
+    
+    # appropriation date
+    appropx <- as.character(most_senior_date + aright)
+    
+    # admin_date <- prior_adjx
+    
+    # if prior adjudication date is AFTER appropriation date, than admin date is appropriation date
+    if(appropx > prior_adjx) {
+      
+      admin_date <- appropx
+      
+      # if prior adjudication date is BEFORE appropriation date, than admin date is prior adjudication date
+    } else {
+      
+      admin_date <- prior_adjx
+      
+    }
+    # # if prior adjudication date is AFTER appropriation date, than admin date is appropriation date
+    # if(prior_adjx > appropx) {
+    #
+    #   admin_date <- appropx
+    #
+    # # if prior adjudication date is BEFORE appropriation date, than admin date is prior adjudication date
+    # } else {
+    #
+    #   admin_date <- prior_adjx
+    #
+    # }
+    
+  }
+  
+  return(admin_date)
+  
+}
 
 
 
