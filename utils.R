@@ -42,6 +42,7 @@ huc_basemap <- function(shp) {
     leaflet::setView(lng = -105.6, lat = 39.7, zoom = 7) %>% 
     leaflet::addPolygons(
       data = shp,
+      # group = "base_hucs",
       fillColor = 'white',
       # fillColor = 'grey',
       # fillColor = ~pal_fact(BASIN),
@@ -492,12 +493,21 @@ make_calls_plot_year <- function(df) {
       # color = "red"
     ) +
     ggplot2::labs(
+      title = "Priority date vs. time",
+      subtitle = "Call analysis done uses the most upstream WDID on each HUC4's main river segment\nCall analysis uses the most junior right to show the downstream priority date that called out all rights junior to it",
       x     = "Date",
-      y     = "Priority Date"
-      # color = "WDID"
+      y     = "Priority Date",
+      color = "Year"
     ) +
     ggplot2::facet_wrap(~year)+
-    ggplot2::theme_bw()
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      plot.title    = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
+      plot.subtitle = ggplot2::element_text(size = 14, hjust = 0.5),
+      legend.title  = ggplot2::element_text(size = 14),
+      legend.text   = ggplot2::element_text(size = 14),
+      axis.text     = ggplot2::element_text(size = 14, face = "bold")
+    )
   
   return(admin_plot)
   
@@ -530,16 +540,22 @@ make_date_map <- function(lines, pts) {
     date_plot <- 
       ggplot2::ggplot() +
       ggplot2::geom_sf(data = lines) +
-      ggplot2::geom_sf(data = bin_wr,
-                       ggplot2::aes(color = bin_date), 
-                       size = 3) +
+      ggplot2::geom_sf(
+        data  = bin_wr,
+        ggplot2::aes(color = bin_date), 
+        alpha = 0.7,
+        size  = 3
+        ) +
       ggplot2::labs(
         title = "Binned Appropriation Dates",
         color = "Appropriation dates"
         ) +
       ggplot2::theme_bw() +
       ggplot2::theme(
-        plot.title = ggplot2::element_text(hjust = 0.5)
+        plot.title   = ggplot2::element_text(size = 16,face = "bold", hjust = 0.5),
+        legend.title = ggplot2::element_text(size = 14),
+        legend.text  = ggplot2::element_text(size = 14),
+        axis.text    = ggplot2::element_text(size = 14, face = "bold")
         )
     
     return(date_plot)

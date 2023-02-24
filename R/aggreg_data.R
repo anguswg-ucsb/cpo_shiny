@@ -14,6 +14,7 @@ wr_net_path     <- "data/water_right_netamounts.rds"
 wr_pts_path     <- "data/water_right_netamounts_pts.rds"
 districts_path  <- "data/water_districts_tbl.rds"
 ms_path         <- "data/nhd_mainstems.rds"
+msu_path        <- "data/nhd_mainstems_union.rds"
 huc_path        <- "data/huc4.rds"
 end_pts_path    <- "data/upstream_pts.rds"
 call_path       <- "data/upstream_call_analysis.rds"
@@ -62,8 +63,9 @@ if(file.exists(wr_net_path)) {
       sf::st_as_sf(
         coords = c("longitude", "latitude"), 
         crs    = 4326
-      )  
-    
+      ) %>% 
+      dplyr::select(wdid, structure_name, structure_type, gnis_id,
+                    appropriation_date, admin_number, geometry)
     message(paste0("Saving spatial data to path ---> ", wr_pts_path))
     
     # save water rights netamount spatial data
@@ -132,6 +134,30 @@ if(file.exists(ms_path)) {
   
   main_stem <- readRDS(ms_path)
   
+  # if union mainstem lines file exists, read it in
+  if(file.exists(msu_path)) {
+    
+    message(paste0("Reading data from ---> ", msu_path))
+    
+    ms_union <- readRDS(msu_path)
+    
+  } else {
+    
+    # union linestrings by HUC4
+    ms_union <- 
+      main_stem %>% 
+      dplyr::group_by(huc4) %>% 
+      dplyr::summarise() %>% 
+      dplyr::ungroup()
+    
+    message(paste0("Saving data to path ---> ", msu_path))
+    
+    # save rds
+    saveRDS(ms_union, msu_path)
+    
+  }
+    
+  # if huc4 file exists, read it in
   if(file.exists(huc_path)) {
   
   message(paste0("Reading data from ---> ", huc_path)) 
@@ -156,16 +182,17 @@ if(file.exists(ms_path)) {
       dplyr::group_by(huc4) %>% 
       dplyr::summarise() %>% 
       dplyr::ungroup() %>% 
-      sf::st_crop(co)
+      sf::st_crop(co) %>% 
+      sf::st_simplify(dTolerance = 200)
     
     message(paste0("Saving data to path ---> ", huc_path))
     
     # save HUC4s data
     saveRDS(huc4s, huc_path)
     
-  }
+    }
   
-} else {
+  } else {
   
   message(paste0("Data not found at path ---> ", ms_path))
   
@@ -191,7 +218,8 @@ if(file.exists(ms_path)) {
       dplyr::group_by(huc4) %>% 
       dplyr::summarise() %>% 
       dplyr::ungroup() %>% 
-      sf::st_crop(co)
+      sf::st_crop(co) %>% 
+      sf::st_simplify(dTolerance = 200)
     
     message(paste0("Saving data to path ---> ", huc_path))
     
@@ -269,6 +297,24 @@ if(file.exists(ms_path)) {
   
   # save rds
   saveRDS(main_stem, ms_path)
+  
+  
+  # if union mainstem lines file doesn't exist 
+  if(!file.exists(msu_path)) {
+    
+    # union linestrings by HUC4
+    ms_union <- 
+      main_stem %>% 
+      dplyr::group_by(huc4) %>% 
+      dplyr::summarise() %>% 
+      dplyr::ungroup()
+    
+    message(paste0("Saving data to path ---> ", msu_path))
+    
+    # save rds
+    saveRDS(ms_union, msu_path)
+    
+  }
   
 }
 
@@ -383,53 +429,53 @@ if(file.exists(call_path)) {
 }
 
 
-# *************
-# ---- tmp ----
-# *************
-# colorado state geometry
-co <- AOI::aoi_get(state = "CO")
-
-# HUC8s
-hucs <- nhdplusTools::get_huc8(co) 
-
-# convert HUC8s to HUC4
-huc4s <-
-  hucs %>% 
-  dplyr::mutate(
-    huc4 = substr(huc8, 1, 4)
-  ) %>% 
-  dplyr::group_by(huc4) %>% 
-  dplyr::summarise() %>% 
-  dplyr::ungroup() %>% 
-  sf::st_crop(co)
-
-# loop over each huc4 and get mainstem of the river
-main_stems <- lapply(1:nrow(huc4s), function(i) {
-  message(paste0(i, "/", nrow(huc4s)))
-  
-  huc_net <- nhdplusTools::get_nhdplus(
-    AOI = huc4s[i, ],
-    realization = "outlet"
-  )
-  
-  starts  <-
-    huc_net %>% 
-    dplyr::filter(startflag == 1) %>% 
-    dplyr::filter(hydroseq == min(hydroseq))
-  
-  dm_net <- nhdplusTools::navigate_network(
-    start       = starts,
-    mode        = "DM",
-    distance_km = 250
-  ) %>% 
-    dplyr::mutate(huc4 = huc4s$huc4[i]) %>% 
-    dplyr::mutate(dplyr::across(c(-geometry), as.character))
-  
-  dm_net
-  
-}) %>% 
-  dplyr::bind_rows()
-
-# save rds
-saveRDS(main_stems. ms_path)
+# # *************
+# # ---- tmp ----
+# # *************
+# # colorado state geometry
+# co <- AOI::aoi_get(state = "CO")
+# 
+# # HUC8s
+# hucs <- nhdplusTools::get_huc8(co) 
+# 
+# # convert HUC8s to HUC4
+# huc4s <-
+#   hucs %>% 
+#   dplyr::mutate(
+#     huc4 = substr(huc8, 1, 4)
+#   ) %>% 
+#   dplyr::group_by(huc4) %>% 
+#   dplyr::summarise() %>% 
+#   dplyr::ungroup() %>% 
+#   sf::st_crop(co)
+# 
+# # loop over each huc4 and get mainstem of the river
+# main_stems <- lapply(1:nrow(huc4s), function(i) {
+#   message(paste0(i, "/", nrow(huc4s)))
+#   
+#   huc_net <- nhdplusTools::get_nhdplus(
+#     AOI = huc4s[i, ],
+#     realization = "outlet"
+#   )
+#   
+#   starts  <-
+#     huc_net %>% 
+#     dplyr::filter(startflag == 1) %>% 
+#     dplyr::filter(hydroseq == min(hydroseq))
+#   
+#   dm_net <- nhdplusTools::navigate_network(
+#     start       = starts,
+#     mode        = "DM",
+#     distance_km = 250
+#   ) %>% 
+#     dplyr::mutate(huc4 = huc4s$huc4[i]) %>% 
+#     dplyr::mutate(dplyr::across(c(-geometry), as.character))
+#   
+#   dm_net
+#   
+# }) %>% 
+#   dplyr::bind_rows()
+# 
+# # save rds
+# saveRDS(main_stems, ms_path)
 
