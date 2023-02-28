@@ -263,3 +263,14 @@ call_df <- get_calls(
   start_date = Sys.Date() - 365,
   end_date   = Sys.Date()
 )
+
+
+call_ts %>% 
+  dplyr::mutate(
+    day   = lubridate::yday(datetime),
+    year  = as.character(year),
+    month = as.character(month)
+  ) %>% 
+  ggplot2::ggplot() +
+  ggplot2::geom_line(ggplot2::aes(x = day, y = priority_date, color = year), size = 1) +
+  gghighlight::gghighlight(year %in% c("2002"))

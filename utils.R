@@ -506,10 +506,44 @@ make_calls_plot_year <- function(df) {
       plot.subtitle = ggplot2::element_text(size = 14, hjust = 0.5),
       legend.title  = ggplot2::element_text(size = 14),
       legend.text   = ggplot2::element_text(size = 14),
-      axis.text     = ggplot2::element_text(size = 14, face = "bold")
+      axis.title     = ggplot2::element_text(size = 16, face = "bold"),
+      axis.text     = ggplot2::element_text(size = 14)
     )
   
   return(admin_plot)
+  
+  
+}
+
+make_highlight_calls_plot <- function(df, years) {
+  
+  admin_highlight_plot <-
+    df %>% 
+    dplyr::mutate(
+      day   = lubridate::yday(datetime),
+      year  = as.character(year),
+      month = as.character(month)
+    ) %>% 
+    ggplot2::ggplot() +
+    ggplot2::geom_line(ggplot2::aes(x = day, y = priority_date, color = year), size = 1) +
+    gghighlight::gghighlight(year %in% c(years)) +
+    ggplot2::labs(
+      title = "Priority date vs. time",
+      x     = "Day of the Year",
+      y     = "Priority Date",
+      color = "Year"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      plot.title    = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
+      plot.subtitle = ggplot2::element_text(size = 14, hjust = 0.5),
+      legend.title  = ggplot2::element_text(size = 14),
+      legend.text   = ggplot2::element_text(size = 14),
+      axis.title     = ggplot2::element_text(size = 16, face = "bold"),
+      axis.text     = ggplot2::element_text(size = 14)
+    )
+  
+  return(admin_highlight_plot)
   
   
 }
@@ -555,7 +589,8 @@ make_date_map <- function(lines, pts) {
         plot.title   = ggplot2::element_text(size = 16,face = "bold", hjust = 0.5),
         legend.title = ggplot2::element_text(size = 14),
         legend.text  = ggplot2::element_text(size = 14),
-        axis.text    = ggplot2::element_text(size = 14, face = "bold")
+        axis.title   = ggplot2::element_text(size = 16, face = "bold"),
+        axis.text    = ggplot2::element_text(size = 14)
         )
     
     return(date_plot)
