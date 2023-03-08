@@ -35,14 +35,17 @@ source('utils.R')
 ```{r context="server"}
 # water rights net amounts spatial data
 wr_pts     <- readRDS("water_right_netamounts_pts.rds")
-end_pts    <- readRDS("data/upstream_pts.rds")
-call_df    <- readRDS("data/upstream_call_analysis.rds")
+end_pts    <- readRDS("data/upstream_pts_district.rds")
+# call_df    <- readRDS("data/upstream_call_analysis.rds")
+# hucs       <- readRDS("data/huc4.rds")
+# main_stem  <- readRDS("data/nhd_mainstems.rds")
 
-hucs       <- readRDS("data/huc4.rds")
-main_stem  <- readRDS("data/nhd_mainstems.rds")
+dists      <- sf::read_sf("data/water_districts.gpkg")
+main_stem  <- readRDS("data/nhd_mainstems_district.rds")
+call_df    <- readRDS("data/upstream_call_analysis_district.rds")
 
 # base leaflet map
-output$baseMap       <- renderLeaflet({ huc_basemap(shp = hucs) })
+output$baseMap       <- renderLeaflet({ dist_basemap(shp = dists) })
 
 ```
 
@@ -54,18 +57,54 @@ map_click <- shiny::reactive({
 ```
 
 ```{r context="server"}
-huc_id <- shiny::reactive({
-   input$baseMap_shape_click$id
+dist_id <- shiny::reactive({
+   as.numeric(input$baseMap_shape_click$id)
 })
 ```
 
 ```{r context="server"}
 call_ts <- shiny::reactive({
-   call_df[call_df$wdid == end_pts[end_pts$huc4 == huc_id(),]$wdid, ]
+   call_df[call_df$wdid == end_pts[end_pts$district == dist_id(),]$wdid, ]
+  # call_df[call_df$wdid == end_pts[end_pts$district == "01",]$wdid, ]
    # call_df[call_df$wdid == end_pts[end_pts$huc4 == "1019",]$wdid, ]
 })
 
 ```
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+
+```{r}
+
+# shiny::selectInput(
+#   "yearNum",
+#   label = h3("Year"),
+#   choices = 1990:2023,
+#   selected = 2022
+# )
+
+shiny::selectizeInput(
+  inputId  = "selectedYears",
+  label    = h3("Year"),
+  choices  = 1990:2022,
+  selected = 2022,
+  multiple = TRUE
+  )
+```
+
+1. Click on a HUC4 area within the interactive map in the top right panel
+
+2. Adjust years of interest that will be highlighted in the top left plot.
+
+<br>
+
+The top left plot represents the most SENIOR right that makes a water right call throughout the year. Values lower on the Y axis correspond to a *more senior right* calling out. 
+
+<br>
+
+**The call analysis is done from the MOST upstream WDID at each HUC4's primary river mainstem using the most junior water right possible (admin number = "99999.00000").**  
+
+
+
 Row
 -------------------------------------
 ### Map 1
@@ -78,7 +117,7 @@ leaflet::leafletOutput("baseMap")
 # observeEvent(input$districtMapMLR_click, {
 shiny::observeEvent(input$baseMap_shape_click, {
   
-   if(is.null(huc_id())) {
+   if(is.null(dist_id())) {
      
      return(NULL)
      
@@ -110,13 +149,13 @@ shiny::observeEvent(input$baseMap_shape_click, {
           #           crs = 4326
           #           )
           
-          print(paste0("Subsetting mainstems to HUC4: ",  huc_id()))
+          print(paste0("Subsetting mainstems to HUC4: ",  dist_id()))
           
           # select mainstem of HUC4 area
           fline <-
             main_stem %>%
-            dplyr::filter(huc4 == huc_id())
- 
+            # dplyr::filter(district == dist_id())
+            dplyr::filter(district == as.numeric("01"))
           # buffer bounds of mainstem for map fly to zoom
           bounds <-
             # buff %>%
@@ -158,7 +197,9 @@ shiny::observeEvent(input$baseMap_shape_click, {
                           )
           
           # subset to HUC4 of interest
-          sub_huc <- hucs[hucs$huc4 == huc_id(), ]
+          # sub_huc <- hucs[hucs$huc4 == huc_id(), ]
+          # sub_dist <- dists[dists$DISTRICT == as.numeric("01"), ]
+          sub_dist <- dists[dists$DISTRICT == dist_id(), ]
           
           print("Updating leaflet map...")
           
@@ -168,7 +209,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
               leaflet::clearShapes() %>%
               # leaflet::removeShape(layerId = levelpathi) %>% 
               leaflet::addPolygons(
-                    data         = hucs,
+                    data         = dists,
                     fillColor    = 'white',
                     # fillColor = 'grey',
                     # fillColor = ~pal_fact(BASIN),
@@ -176,8 +217,8 @@ shiny::observeEvent(input$baseMap_shape_click, {
                     col          = "black",
                     opacity      = 1,
                     weight       = 2.5,
-                    label        = ~paste0("HUC4: ", huc4),
-                    layerId      = ~huc4,
+                    label        = ~paste0("District: ", DISTRICT),
+                    layerId      = ~DISTRICT,
                     labelOptions = leaflet::labelOptions(
                                         noHide = F,
                                         style  = list(
@@ -186,7 +227,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
                                       )
                 ) %>%
               leaflet::addPolygons(
-                  data         = sub_huc,
+                  data         = sub_dist,
                   fillColor    = '#3EB489',
                   # fillColor = 'grey',
                   # fillColor = ~pal_fact(BASIN),
@@ -194,8 +235,8 @@ shiny::observeEvent(input$baseMap_shape_click, {
                   col          = "black",
                   opacity      = 1,
                   weight       = 3,
-                  label        = ~paste0("HUC4: ", huc4),
-                  layerId      = ~huc4,
+                  label        = ~paste0("District: ", DISTRICT),
+                  layerId      = ~DISTRICT,
                   labelOptions = leaflet::labelOptions(
                                       noHide = F,
                                       style  = list(
@@ -295,16 +336,16 @@ output$mapCoords <- shiny::renderPrint({
 })
 ```
 
-### HUC ID output
+### distID output
 ```{r}
-shiny::verbatimTextOutput("hucID")
+shiny::verbatimTextOutput("distID")
 ```
 
 ```{r context="server"}
 
 # render district value box at start
-output$hucID <- shiny::renderPrint({
-  print(huc_id())
+output$distID <- shiny::renderPrint({
+  print(dist_id())
 })
 ```
 
@@ -316,10 +357,10 @@ Row
 shiny::plotOutput("callDatePlot")
 ```
 
-### Binned date map
-```{r}
-shiny::plotOutput("adminDatePlot")
-```
+<!-- ### Binned date map -->
+<!-- ```{r} -->
+<!-- shiny::plotOutput("adminDatePlot") -->
+<!-- ``` -->
 
 
 

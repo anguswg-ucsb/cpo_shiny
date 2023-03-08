@@ -10,6 +10,7 @@ library(dplyr)
 # ***********************
 
 # Paths
+# wd_shp_path     <- "data/water_districts.gpkg"
 wr_net_path     <- "data/water_right_netamounts.rds"
 wr_pts_path     <- "data/water_right_netamounts_pts.rds"
 districts_path  <- "data/water_districts_tbl.rds"
@@ -19,6 +20,19 @@ huc_path        <- "data/huc4.rds"
 end_pts_path    <- "data/upstream_pts.rds"
 call_path       <- "data/upstream_call_analysis.rds"
 
+# ***********************************
+# ---- get water districts shape ----
+# ***********************************
+
+# if(file.exists(wd_shp_path)) {
+#   
+#   message(paste0("Reading data from ---> ", wd_shp_path))
+#   
+#   dist_shp <- sf::read_sf(wd_shp_path)
+#   
+# } else {
+#   message(paste0("Data not found at path ---> ", wd_shp_path))
+# }
 # ***********************************
 # ---- get water districts table ----
 # ***********************************
@@ -55,6 +69,23 @@ if(file.exists(wr_net_path)) {
   wr_net <- readRDS(wr_net_path)
   
   if(!file.exists(wr_pts_path)) {
+    # colorado state geometry
+    co <- AOI::aoi_get(state = "CO")
+    
+    # HUC8s
+    hucs <- nhdplusTools::get_huc8(co) 
+    
+    # convert HUC8s to HUC4
+    huc4s <-
+      hucs %>% 
+      dplyr::mutate(
+        huc4 = substr(huc8, 1, 4)
+      ) %>% 
+      dplyr::group_by(huc4) %>% 
+      dplyr::summarise() %>% 
+      dplyr::ungroup() %>% 
+      sf::st_crop(co) %>% 
+      sf::st_simplify(dTolerance = 200)
     
     wr_pts <- 
       wr_net %>% 
@@ -65,7 +96,13 @@ if(file.exists(wr_net_path)) {
         crs    = 4326
       ) %>% 
       dplyr::select(wdid, structure_name, structure_type, gnis_id,
-                    appropriation_date, admin_number, geometry)
+                    appropriation_date, admin_number, geometry) %>% 
+      sf::st_join(huc4s) %>% 
+      dplyr::mutate(
+        district = substr(wdid, 1, 2)
+      ) %>% 
+      dplyr::relocate(district)
+    
     message(paste0("Saving spatial data to path ---> ", wr_pts_path))
     
     # save water rights netamount spatial data
@@ -105,6 +142,24 @@ if(file.exists(wr_net_path)) {
   
   if(!file.exists(wr_pts_path)) {
     
+    # colorado state geometry
+    co <- AOI::aoi_get(state = "CO")
+    
+    # HUC8s
+    hucs <- nhdplusTools::get_huc8(co) 
+    
+    # convert HUC8s to HUC4
+    huc4s <-
+      hucs %>% 
+      dplyr::mutate(
+        huc4 = substr(huc8, 1, 4)
+      ) %>% 
+      dplyr::group_by(huc4) %>% 
+      dplyr::summarise() %>% 
+      dplyr::ungroup() %>% 
+      sf::st_crop(co) %>% 
+      sf::st_simplify(dTolerance = 200)
+    
     wr_pts <- 
       wr_net %>% 
       dplyr::filter(!is.na(longitude) | !is.na(latitude)) %>% 
@@ -112,7 +167,8 @@ if(file.exists(wr_net_path)) {
       sf::st_as_sf(
         coords = c("longitude", "latitude"), 
         crs    = 4326
-      )  
+      )  %>% 
+      sf::st_join(huc4s)
   
   message(paste0("Saving spatial data to path ---> ", wr_pts_path))
     

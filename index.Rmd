@@ -35,7 +35,7 @@ source('utils.R')
 
 ```{r context="server"}
 # water rights net amounts spatial data
-wr_pts     <- readRDS("water_right_netamounts_pts.rds")
+wr_pts     <- readRDS("data/water_right_netamounts_pts.rds")
 end_pts    <- readRDS("data/upstream_pts.rds")
 call_df    <- readRDS("data/upstream_call_analysis.rds")
 
@@ -200,7 +200,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
           fline_pts <- sf::st_transform(
                           sf::st_filter(
                             sf::st_transform(
-                              wr_pts,
+                              dplyr::filter(wr_pts, huc4 == huc_id()),
                               5070
                               ) ,
                             fline_buff

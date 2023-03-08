@@ -64,6 +64,38 @@ huc_basemap <- function(shp) {
   
 }
 
+# leaflet basemap w/ HUC4 shape
+dist_basemap <- function(shp) {
+  
+  leaflet::leaflet() %>%
+    leaflet::addProviderTiles(providers$Esri.NatGeoWorldMap, group = "Nat Geo Topographic2") %>%
+    leaflet::addScaleBar("bottomleft") %>%
+    leafem::addMouseCoordinates() %>%
+    leaflet::setView(lng = -105.6, lat = 39.7, zoom = 7) %>% 
+    leaflet::addPolygons(
+      data = shp,
+      # group = "base_hucs",
+      fillColor = 'white',
+      # fillColor = 'grey',
+      # fillColor = ~pal_fact(BASIN),
+      fillOpacity = 0.7,
+      col = "black",
+      opacity = 1,
+      weight = 2.5,
+      label = ~paste0("District: ", DISTRICT),
+      layerId = ~DISTRICT,
+      labelOptions = labelOptions(
+        noHide = F,
+        # direction = 'center',
+        # textOnly = F)
+        style = list(
+          "color" = "black",
+          "font-weight" = "1000")
+      )
+    )
+  
+}
+
 get_us_net <- function(pt, distance) {
   
   # comid_pt <- dataRetrieval::findNLDI(location = pt)
@@ -517,42 +549,120 @@ make_calls_plot_year <- function(df) {
 
 make_highlight_calls_plot <- function(df, years) {
   
-  admin_highlight_plot <-
+  # df <- call_df[call_df$wdid == end_pts[end_pts$huc4 == "1401",]$wdid, ]
+  
+  # add day of year number and year columns
+  df <- 
     df %>% 
     dplyr::mutate(
       day   = lubridate::yday(datetime),
-      year  = as.character(year),
-      month = as.character(month)
-    ) %>% 
+      year  = as.character(year)
+    ) 
+  
+  # add month label name per day number
+  df$month <- lubridate::month(lubridate::ymd(paste0(df$year, "-01-01")) + lubridate::days(df$day - 1), label = TRUE)
+  
+  
+  admin_highlight_plot <-
+    df %>% 
     ggplot2::ggplot() +
-    ggplot2::geom_line(ggplot2::aes(x = day, y = priority_date, color = year), size = 1) +
-    gghighlight::gghighlight(year %in% c(years)) +
+    ggplot2::geom_line(ggplot2::aes(x = day, y = priority_date, color = factor(year)),
+                       alpha = 0.9, size = 2.5) +
+      ggplot2::scale_x_continuous(limits = c(1, 365)) +
+      ggplot2::scale_x_continuous(
+        breaks = c(1, 59, 120, 181, 242, 303, 365),
+        labels = c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Jan")) +
+    gghighlight::gghighlight(year %in% c(years), 
+                             unhighlighted_params = list(size = 1)) +
     ggplot2::labs(
       title = "Priority date vs. time",
-      x     = "Day of the Year",
+      # subtitle = "Colorado River Basin",
+      x     = "Month",
       y     = "Priority Date",
       color = "Year"
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(
-      plot.title    = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
-      plot.subtitle = ggplot2::element_text(size = 14, hjust = 0.5),
-      legend.title  = ggplot2::element_text(size = 14),
-      legend.text   = ggplot2::element_text(size = 14),
-      axis.title     = ggplot2::element_text(size = 16, face = "bold"),
-      axis.text     = ggplot2::element_text(size = 14)
-    )
+      plot.title        = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.subtitle     = ggplot2::element_text(size = 14, hjust = 0.5),
+      legend.title      = ggplot2::element_text(size = 18, hjust = 0.5, face = "bold"),
+      legend.text       = ggplot2::element_text(size = 16),
+      axis.title        = ggplot2::element_text(size = 16, face = "bold"),
+      axis.text         = ggplot2::element_text(size = 16),
+      legend.key.width  = unit(1.5, "cm"),
+      legend.text.align = 0,
+      legend.key.height = unit(1, "cm")
+    ) 
+  admin_highlight_plot
   
+  # ggplot2::ggsave(
+  #   filename = "img/rightograph_colorado.png",
+  #   plot = admin_highlight_plot,
+  #   height = 10,
+  #   width = 12,
+  #   dpi = 300,
+  #   scale = 1
+  # )
   return(admin_highlight_plot)
   
   
 }
+
+# tmp_huc = "1019"
+# # select mainstem of HUC4 area
+# fline <-
+#   main_stem %>%
+#   dplyr::filter(huc4 == tmp_huc)
+# 
+# # buffer bounds of mainstem for map fly to zoom
+# bounds <-
+#   # buff %>%
+#   fline %>%
+#   # sf::st_buffer(5250) %>%
+#   sf::st_bbox() %>%
+#   as.vector()
+# 
+# print("Buffering mainstem...")
+# 
+# # buffer around mainstem to get points within
+# fline_buff <- sf::st_as_sf(
+#   sf::st_cast(
+#     sf::st_union(
+#       sf::st_buffer(
+#         sf::st_transform(
+#           fline,
+#           5070
+#         ),
+#         1609.3
+#       )
+#     ),
+#     "POLYGON"
+#   )
+# )
+# 
+# print("Subsetting WDIDs to mainstem buffer...")
+# 
+# # Water rights points around main flowline
+# fline_pts <- sf::st_transform(
+#   sf::st_filter(
+#     sf::st_transform(
+#       dplyr::filter(wr_pts, huc4 == tmp_huc),
+#       5070
+#     ) ,
+#     fline_buff
+#   ),
+#   4326
+# )
+# 
+# # subset to HUC4 of interest
+# sub_huc <- hucs[hucs$huc4 == tmp_huc, ]
 
 make_date_map <- function(lines, pts) {
   # lines <- main_stem
   # pts <- wr_pts
   # lines = fline
   # pts   = fline_pts
+  
   bin_wr <- 
     pts %>%
     dplyr::group_by(wdid) %>%
@@ -593,9 +703,135 @@ make_date_map <- function(lines, pts) {
         axis.text    = ggplot2::element_text(size = 14)
         )
     
+    # date_plot <- 
+    #   ggplot2::ggplot() +
+    #   ggplot2::geom_sf(data = dplyr::filter(hucs, huc4 == tmp_huc)) +
+    #   ggplot2::geom_sf(data = lines) +
+    #   ggplot2::geom_sf(
+    #     data  = bin_wr,
+    #     # ggplot2::aes(color = bin_date), 
+    #     alpha = 0.5,
+    #     size  = 2.5
+    #   ) +
+    #   # ggplot2::geom_sf(data = dplyr::filter(hucs, huc4 == tmp_huc)) +
+    #   ggplot2::labs(
+    #     # title = "Binned Appropriation Dates",
+    #     title = "South Platte River Basin WDIDs",
+    #     color = "Appropriation dates"
+    #   ) +
+    #   ggplot2::theme_bw() +
+    #   ggplot2::theme(
+    #     plot.title   = ggplot2::element_text(size = 16,face = "bold", hjust = 0.5),
+    #     legend.title = ggplot2::element_text(size = 14),
+    #     legend.text  = ggplot2::element_text(size = 14),
+    #     axis.title   = ggplot2::element_text(size = 16, face = "bold"),
+    #     axis.text    = ggplot2::element_text(size = 14)
+    #   )
+    # 
+    # date_plot
+    # 
+    # ggplot2::ggsave(
+    #   filename = "img/southplatte_wdid_map.png",
+    #   plot = date_plot,
+    #   height = 10,
+    #   width = 12,
+    #   dpi = 300,
+    #   scale = 1
+    # )
+    
     return(date_plot)
 }
 
+# aq <- readRDS("C:/Users/angus/Downloads/epa_aqi_all.RDS")
+# 
+# tmp <- 
+#   aq %>% 
+#   tidyr::pivot_longer(cols = c(-year, -state, -county)) %>% 
+#   tidyr::separate(name, into = c("month", "aqi")) %>% 
+#   dplyr::mutate(
+#     month     = toupper(month),
+#     month_num = match(month, toupper(month.abb)),
+#     month_num = ifelse(month_num > 9, month_num, paste0("0", month_num)),
+#     date      = as.Date(paste0(year, "-", month_num, "-01"))
+#   ) %>% 
+#   dplyr::filter(state == "colorado")
+
+# aqi_plot <- 
+#   tmp %>% 
+#   dplyr::group_by(date) %>% 
+#   dplyr::summarise(aq_value = mean(value, na.rm = T)) %>% 
+#   dplyr::ungroup() %>% 
+#   ggplot2::ggplot() +
+#   ggplot2::geom_line(ggplot2::aes(x = date, y = aq_value), size = 1) + 
+#   ggplot2::labs(
+#     title = "Colorado EPA Air Quality Index",
+#     subtitle = "Statewide mean AQI",
+#     x     = "",
+#     y     = "AQI",
+#     color = "County"
+#   ) +
+#   ggplot2::theme_bw() +
+#   ggplot2::theme(
+#     plot.title        = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5),
+#     plot.subtitle     = ggplot2::element_text(size = 14, hjust = 0.5),
+#     legend.title      = ggplot2::element_text(size = 18, hjust = 0.5, face = "bold"),
+#     legend.text       = ggplot2::element_text(size = 16),
+#     axis.title        = ggplot2::element_text(size = 16, face = "bold"),
+#     axis.text         = ggplot2::element_text(size = 16),
+#     # legend.key.width  = unit(1.5, "cm"),
+#     # legend.text.align = 0,
+#     # legend.key.height = unit(1, "cm")
+#   ) 
+# 
+# ggplot2::ggsave(
+#   filename = "img/aqi_plot.png",
+#   plot = aqi_plot,
+#   height = 10,
+#   width = 12,
+#   dpi = 300,
+#   scale = 1
+# )
+# 
+# county_aqi <- 
+#   tmp %>% 
+#   dplyr::filter(county %in% c("boulder", "denver", "larimer", "adams")) %>% 
+#   dplyr::mutate(county = tools::toTitleCase(county)) %>% 
+#   # dplyr::group_by(date) %>% 
+#   # dplyr::summarise(aq_value = mean(value, na.rm = T)) %>% 
+#   # dplyr::ungroup() %>% 
+#   ggplot2::ggplot() +
+#   ggplot2::geom_line(ggplot2::aes(x = date, y = value, color = county), 
+#                      size = 1) + 
+#   ggplot2::facet_wrap(~county) + 
+#   ggplot2::labs(
+#     title = "Colorado EPA Air Quality Index",
+#     # subtitle = "Colorado River Basin",
+#     x     = "",
+#     y     = "AQI",
+#     color = "County"
+#   ) +
+#   ggplot2::theme_bw() +
+#   ggplot2::theme(
+#     plot.title        = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5),
+#     plot.subtitle     = ggplot2::element_text(size = 14, hjust = 0.5),
+#     legend.title      = ggplot2::element_text(size = 18, hjust = 0.5, face = "bold"),
+#     legend.text       = ggplot2::element_text(size = 16),
+#     axis.title        = ggplot2::element_text(size = 16, face = "bold"),
+#     axis.text         = ggplot2::element_text(size = 16),
+#     strip.text = ggplot2::element_text(size=16)
+#     # legend.key.width  = unit(1.5, "cm"),
+#     # legend.text.align = 0,
+#     # legend.key.height = unit(1, "cm")
+#   ) 
+# 
+# ggplot2::ggsave(
+#   filename = "img/county_aqi_plot.png",
+#   plot = county_aqi,
+#   height = 10,
+#   width = 12,
+#   dpi = 300,
+#   scale = 1
+# )
 # ***********************************
 # ---- convert admin no to dates ----
 # ***********************************
