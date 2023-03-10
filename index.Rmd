@@ -201,13 +201,14 @@ shiny::observeEvent(input$baseMap_shape_click, {
                           sf::st_filter(
                             sf::st_transform(
                               dplyr::filter(wr_pts, huc4 == huc_id()),
+                              # dplyr::filter(wr_pts, huc4 == tmp_huc),
                               5070
                               ) ,
                             fline_buff
                             ),
                             4326
                           )
-          
+          # 1401 
           # subset to HUC4 of interest
           sub_huc <- hucs[hucs$huc4 == huc_id(), ]
           # sub_huc <- hucs[hucs$huc4 == tmp_huc, ]
