@@ -19,17 +19,20 @@ msu_path        <- "data/nhd_mainstems_union.rds"
 huc_path        <- "data/huc4.rds"
 end_pts_path    <- "data/upstream_pts.rds"
 call_path       <- "data/upstream_call_analysis.rds"
-
+dist_ms_path      <- "data/nhd_mainstems_district.rds"
+dist_msu_path     <- "data/nhd_mainstems_union_district.rds"
+dist_end_pts_path <- "data/upstream_pts_district.rds"
+dist_call_path    <- "data/upstream_call_analysis_district.rds"
 # ***********************************
 # ---- get water districts shape ----
 # ***********************************
 
 # if(file.exists(wd_shp_path)) {
-#   
+# 
 #   message(paste0("Reading data from ---> ", wd_shp_path))
-#   
+# 
 #   dist_shp <- sf::read_sf(wd_shp_path)
-#   
+# 
 # } else {
 #   message(paste0("Data not found at path ---> ", wd_shp_path))
 # }
@@ -372,7 +375,7 @@ if(file.exists(ms_path)) {
     
   }
   
-}
+  }
 
 # ************************
 # ---- get end points ----
@@ -418,6 +421,7 @@ if(file.exists(end_pts_path)) {
   saveRDS(end_pts, end_pts_path)
   
 }
+
 
 # ***************************
 # ---- get call_analysis ----
@@ -484,54 +488,272 @@ if(file.exists(call_path)) {
   
 }
 
+# ********************************
+# ---- get mainstems district ----
+# ********************************
 
-# # *************
-# # ---- tmp ----
-# # *************
-# # colorado state geometry
-# co <- AOI::aoi_get(state = "CO")
-# 
-# # HUC8s
-# hucs <- nhdplusTools::get_huc8(co) 
-# 
-# # convert HUC8s to HUC4
-# huc4s <-
-#   hucs %>% 
-#   dplyr::mutate(
-#     huc4 = substr(huc8, 1, 4)
-#   ) %>% 
-#   dplyr::group_by(huc4) %>% 
-#   dplyr::summarise() %>% 
-#   dplyr::ungroup() %>% 
-#   sf::st_crop(co)
-# 
-# # loop over each huc4 and get mainstem of the river
-# main_stems <- lapply(1:nrow(huc4s), function(i) {
-#   message(paste0(i, "/", nrow(huc4s)))
-#   
-#   huc_net <- nhdplusTools::get_nhdplus(
-#     AOI = huc4s[i, ],
-#     realization = "outlet"
-#   )
-#   
-#   starts  <-
-#     huc_net %>% 
-#     dplyr::filter(startflag == 1) %>% 
-#     dplyr::filter(hydroseq == min(hydroseq))
-#   
-#   dm_net <- nhdplusTools::navigate_network(
-#     start       = starts,
-#     mode        = "DM",
-#     distance_km = 250
-#   ) %>% 
-#     dplyr::mutate(huc4 = huc4s$huc4[i]) %>% 
-#     dplyr::mutate(dplyr::across(c(-geometry), as.character))
-#   
-#   dm_net
-#   
-# }) %>% 
-#   dplyr::bind_rows()
-# 
-# # save rds
-# saveRDS(main_stems, ms_path)
+# check if mainstem data path exists
+if(file.exists(dist_ms_path)) {
+  
+  message(paste0("Reading data from ---> ", dist_ms_path))
+  
+  dist_ms <- readRDS(dist_ms_path)
+  
+  # if union mainstem lines file exists, read it in
+  if(file.exists(dist_msu_path)) {
+    
+    message(paste0("Reading data from ---> ", dist_msu_path))
+    
+    dist_msu <- readRDS(dist_msu_path)
+    
+  } else {
+    
+    # union linestrings by HUC4
+    dist_msu <- 
+      dist_ms %>% 
+      dplyr::group_by(district) %>% 
+      dplyr::summarise() %>% 
+      dplyr::ungroup()
+    
+    message(paste0("Saving data to path ---> ", dist_msu_path))
+    
+    # save rds
+    saveRDS(dist_msu, dist_msu_path)
+    
+  }
+  
+  if(file.exists(wd_shp_path)) {
+    
+    message(paste0("Reading data from ---> ", wd_shp_path))
+    
+    dist_shp <- sf::read_sf(wd_shp_path)
+    
+  } else {
+    stop(paste0("Data not found at path ---> ", wd_shp_path))
+  }
+  
+} else {
+  
+  message(paste0("Data not found at path ---> ", dist_ms_path))
+  
+  if(file.exists(wd_shp_path)) {
+    
+    message(paste0("Reading data from ---> ", wd_shp_path))
+    
+    dist_shp <- sf::read_sf(wd_shp_path)
+    
+  } else {
+    stop(paste0("Data not found at path ---> ", wd_shp_path))
+  }
+  
+  
+  # loop over each huc4 and get mainstem of the river
+  main_stem <- lapply(1:nrow(dist_shp), function(i) {
+    
+    message(paste0(i, "/", nrow(dist_shp)))
+    
+    dist_net <- nhdplusTools::get_nhdplus(
+      AOI         = dist_shp[i, ],
+      realization = "flowline"
+    )
+    
+    tryCatch({
+      
+      # minimum stream level of mainstem
+      min_lvl <- 
+        dist_net %>%
+        # huc_outs %>%
+        dplyr::filter(streamcalc != 0) %>%
+        dplyr::group_by(terminalpa) %>%
+        dplyr::filter(streamleve == min(streamleve)) %>% 
+        dplyr::filter(streamorde >= 3) %>% 
+        dplyr::ungroup() %>% 
+        dplyr::mutate(district = dist_shp$DISTRICT[i]) %>%
+        dplyr::mutate(dplyr::across(c(-geometry), as.character))
+      
+      # longest levelpath will be the main flowline/mainstem
+      main_lvlpath <- 
+        min_lvl %>% 
+        dplyr::group_by(levelpathi) %>% 
+        dplyr::summarise() %>% 
+        dplyr::mutate(
+          lengths = sf::st_length(geometry)
+        ) %>% 
+        dplyr::slice(which.max(lengths)) %>% 
+        .$levelpathi
+      
+      # filter to the main levelpathi
+      min_lvl <- 
+        min_lvl %>% 
+        dplyr::filter(levelpathi == main_lvlpath)
+      
+      min_lvl
+      # mapview::mapview(dist_shp) + min_lvl
+    }, error = function(e) {
+      
+      message(paste0("Skipping iteration: ", i, "Error:\n", e))
+      
+      NULL
+      
+    })
+    
+    # plot(huc_net$geometry)
+    # plot(min_lvl$geometry, lwd = 2, color = "red", add = T)
+    # plot(um_net$geometry, color = "red", add = T)
+    
+    # min_lvl %>% dplyr::mutate(streamleve = as.character(streamleve),
+    #            streamorde = as.character(streamorde)) %>% 
+    #   ggplot2::ggplot() + ggplot2::geom_sf(ggplot2::aes(color = hydroseq))
+    
+    # mapview::mapview(ends, color = "green") +
+    #   mapview::mapview(um_net, color = "blue") +
+    #   mapview::mapview(min_lvl, color = "red")
+    
+  }) %>% 
+    dplyr::bind_rows()
+  
+  message(paste0("Saving data to path ---> ", dist_ms_path))
+  
+  # save rds
+  saveRDS(main_stem, dist_ms_path)
+  
+  
+  # if union mainstem lines file doesn't exist 
+  if(!file.exists(dist_msu_path)) {
+    
+    # union linestrings by HUC4
+    ms_union <- 
+      main_stem %>% 
+      dplyr::group_by(district) %>% 
+      dplyr::summarise() %>% 
+      dplyr::ungroup()
+    
+    message(paste0("Saving data to path ---> ", dist_msu_path))
+    
+    # save rds
+    saveRDS(ms_union, dist_msu_path)
+    
+  }
+  
+}
 
+# *********************************
+# ---- get end points district ----
+# *********************************
+
+# locate WDIDs closest to most upstream point of main stem
+
+if(file.exists(dist_end_pts_path)) {
+  
+  message(paste0("Reading data from ---> ", dist_end_pts_path))
+  
+  dist_ends <- readRDS(dist_end_pts_path)
+  
+} else {
+  
+  message(paste0("Data not found at path ---> ", dist_end_pts_path))
+  
+  # most upstream flowlines
+  us_start <- 
+    main_stem %>% 
+    dplyr::group_by(district) %>% 
+    dplyr::filter(hydroseq == max(hydroseq))
+  
+  # list of HUC4s
+  dist_lst <- us_start$district
+  
+  us_start <- 
+    us_start %>% 
+    nhdplusTools::get_node(position = "start")
+  
+  # nearest point index
+  near_idx <- sf::st_nearest_feature(us_start, wr_pts)
+  
+  # most upstream WDID by HUC4
+  dist_ends <- wr_pts[near_idx, ]
+  
+  # add huc4 columns
+  dist_ends$dist_lst <- dist_lst
+  
+  message(paste0("Saving data to path ---> ", dist_end_pts_path))
+  
+  # save water rights netamount data
+  saveRDS(dist_ends, dist_end_pts_path)
+  
+}
+
+# ************************************
+# ---- get call_analysis district ----
+# ************************************
+
+# extract call analysis data for the most upstream WDID for each HUC4/River mainstem (end_pts.rds)
+
+if(file.exists(dist_call_path)) {
+  
+  message(paste0("Reading data from ---> ", dist_call_path))
+  
+  # read in call dataframe
+  dist_call_df <- readRDS(dist_call_path)
+  
+} else {
+  
+  message(paste0("Data not found at path ---> ", dist_call_path))
+  
+  # get call analysis data for each point of interest
+  call_lst <- lapply(1:nrow(dist_ends), function(i) {
+    
+    message(paste0("WDID: ",  dist_ends$wdid[i], " - (", i, "/", nrow(dist_ends), ")"))
+    
+    # GET request to CDSS API
+    tryCatch({
+      ca <- cdssr::get_call_analysis_wdid(
+        wdid       =  dist_ends$wdid[i],
+        admin_no   = "99999.00000",
+        start_date = "1990-01-01",
+        end_date   = "2023-01-01"
+      )
+      ca
+      
+    }, error = function(e) {
+      
+      NULL
+    })
+    
+  }) 
+  
+  call_lst2 <- 
+    call_lst %>% 
+    dplyr::bind_rows() %>% 
+    dplyr::mutate( 
+      year  = lubridate::year(datetime),
+      month = lubridate::month(datetime)
+    ) %>% 
+    dplyr::select(datetime, year, month,
+                  wdid = analysis_wdid, priority_wdid, 
+                  admin_no = analysis_wr_admin_no,
+                  priority_admin_no, priority_date,
+                  out_pct = analysis_out_of_priority_percent_of_day
+    ) %>% 
+    dplyr::group_by(wdid) %>% 
+    dplyr::mutate(
+      priority_date = dplyr::case_when(
+        is.na(priority_date) ~ Sys.Date(),
+        TRUE                 ~ as.Date(priority_date)
+      )
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      district = substr(wdid, 1, 2)
+    ) %>% 
+    dplyr::relocate(district)
+  
+  message(paste0("Saving data to path ---> ", dist_call_path))
+  
+  # save call analysis data
+  saveRDS(call_lst2, dist_call_path)
+  
+}
+
+# *************
+# ---- tmp ----
+# *************

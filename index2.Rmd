@@ -207,6 +207,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
           leaflet::leafletProxy("baseMap") %>%
               leaflet::clearMarkers() %>%
               leaflet::clearShapes() %>%
+            leaflet::clearGroup(c("subhucs", "mainstems")) %>%
               # leaflet::removeShape(layerId = levelpathi) %>% 
               leaflet::addPolygons(
                     data         = dists,
