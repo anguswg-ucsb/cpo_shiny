@@ -23,19 +23,7 @@ dist_ms_path      <- "data/nhd_mainstems_district.rds"
 dist_msu_path     <- "data/nhd_mainstems_union_district.rds"
 dist_end_pts_path <- "data/upstream_pts_district.rds"
 dist_call_path    <- "data/upstream_call_analysis_district.rds"
-# ***********************************
-# ---- get water districts shape ----
-# ***********************************
 
-# if(file.exists(wd_shp_path)) {
-# 
-#   message(paste0("Reading data from ---> ", wd_shp_path))
-# 
-#   dist_shp <- sf::read_sf(wd_shp_path)
-# 
-# } else {
-#   message(paste0("Data not found at path ---> ", wd_shp_path))
-# }
 # ***********************************
 # ---- get water districts table ----
 # ***********************************
@@ -596,18 +584,7 @@ if(file.exists(dist_ms_path)) {
       NULL
       
     })
-    
-    # plot(huc_net$geometry)
-    # plot(min_lvl$geometry, lwd = 2, color = "red", add = T)
-    # plot(um_net$geometry, color = "red", add = T)
-    
-    # min_lvl %>% dplyr::mutate(streamleve = as.character(streamleve),
-    #            streamorde = as.character(streamorde)) %>% 
-    #   ggplot2::ggplot() + ggplot2::geom_sf(ggplot2::aes(color = hydroseq))
-    
-    # mapview::mapview(ends, color = "green") +
-    #   mapview::mapview(um_net, color = "blue") +
-    #   mapview::mapview(min_lvl, color = "red")
+  
     
   }) %>% 
     dplyr::bind_rows()
