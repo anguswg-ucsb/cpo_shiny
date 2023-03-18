@@ -8,28 +8,6 @@ basemap <- function() {
     leafem::addMouseCoordinates() %>%
     leaflet::setView(lng = -105.6, lat = 39.7, zoom = 7)
   
-  
-  # leaflet::addPolygons(
-  #   data = shp,
-  #   fillColor = 'white',
-  #   # fillColor = 'grey',
-  #   # fillColor = ~pal_fact(BASIN),
-  #   fillOpacity = 0.7,
-  #   col = "black",
-  #   opacity = 1,
-  #   weight = 2.5,
-  #   label = ~paste0("District  ", DISTRICT),
-  #   layerId = ~DISTRICT,
-  #   labelOptions = labelOptions(
-  #     noHide = F,
-  #     # direction = 'center',
-  #     # textOnly = F)
-  #     style = list(
-  #       "color" = "black",
-  #       "font-weight" = "1000")
-  #   )
-  # ) 
-  
 }
 
 # leaflet basemap w/ HUC4 shape
@@ -659,24 +637,15 @@ make_highlight_calls_plot <- function(df, years) {
 }
 
 make_single_call_plot <- function(df,min_line, years) {
-  # df = calls
-  
-  # years = c(2022, 2021)
-  # tmp <- wr_pts[wr_pts$wdid == "0200509", ]
-  # tmp$appropriation_date <- as.Date(tmp$appropriation_date)
-  # local_date = min(tmp$appropriation_date)
-  
-  # tmp
+
   df <- 
     df %>% 
     dplyr::mutate(
       day   = lubridate::yday(datetime),
       year  = as.character(lubridate::year(datetime))
-      # year  = as.character(datetime)
     ) 
   df$hline <- min_line
-  
-  # df$hline
+
   # add month label name per day number
   df$month <- lubridate::month(lubridate::ymd(paste0(df$year, "-01-01")) + lubridate::days(df$day - 1), label = TRUE)
   

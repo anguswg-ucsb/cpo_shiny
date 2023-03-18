@@ -113,13 +113,11 @@ wr_net <- cdssr::get_water_rights_netamount(
 
 system.time(
   wr_net2 <- cdssr::get_water_rights_netamount(
-    # aoi    = pt[1, ],
-    # radius = 15
     water_district = click_dist$DISTRICT
   )
 )
+
 # buffer to search area for NHD features
-# buff <- sf::st_buffer(pt, 1500)
 buff <- sf::st_transform(
   sf::st_buffer(
     sf::st_transform(pt, 5070),
@@ -127,15 +125,13 @@ buff <- sf::st_transform(
   ),
   4326
 )
-# sf::st_transform(pt, 5070)
-# # buffer bounds
+
+# buffer bounds
 bounds <-
-  # buff %>%
   buff %>%
-  # sf::st_buffer(5250) %>%
   sf::st_bbox() %>%
   as.vector()
-# nhdplusTools::
+
 comid_pt <- dataRetrieval::findNLDI(location = pt)
 
 um_net <- nhdplusTools::navigate_network(
@@ -154,18 +150,8 @@ area_nhd <- nhdplusTools::get_nhdplus(
 pt_nhd <- nhdplusTools::get_nhdplus(
   AOI         = pt,
   realization = "all"
-  # streamorder = 3
 )
 
-
-# area_nhd$flowline %>% 
-#   dplyr::mutate(
-#     streamorde = as.character(streamorde),
-#     streamleve = as.character(streamleve)
-#                 ) %>% 
-#   sf::st_buffer(1609.3) %>% 
-# ggplot2::ggplot() +
-#   ggplot2::geom_sf(ggplot2::aes(color = streamleve))
 # NHD flowlines
 out   <- pt_nhd$outlet
 
