@@ -74,9 +74,6 @@ main_stems <- lapply(1:nrow(huc4s), function(i) {
   dplyr::bind_rows()
 mapview::mapview(hucs) +co + huc4s
 # 39.7792 -105.7214
-# # # 39.445 -105.176
-# # # 40.27937 -105.8168
-# # 40.66392 -105.4837
 # 40.69548 -105.2631
 pt <- sf::st_as_sf(
   data.frame(

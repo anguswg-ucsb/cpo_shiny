@@ -4,21 +4,26 @@
 # devtools::install_github("anguswg-ucsb/cdssr")
 library(cdssr)
 library(dplyr)
+library(climateR)
+
+# AOI    <- sf::read_sf("https://climate-catalog-data.s3.amazonaws.com/example_aoi.gpkg")
+# library(terra)
 
 # ***********************
 # ---- Paths to data ----
 # ***********************
 
 # Paths
-# wd_shp_path     <- "data/water_districts.gpkg"
-wr_net_path     <- "data/water_right_netamounts.rds"
-wr_pts_path     <- "data/water_right_netamounts_pts.rds"
-districts_path  <- "data/water_districts_tbl.rds"
-ms_path         <- "data/nhd_mainstems.rds"
-msu_path        <- "data/nhd_mainstems_union.rds"
-huc_path        <- "data/huc4.rds"
-end_pts_path    <- "data/upstream_pts.rds"
-call_path       <- "data/upstream_call_analysis.rds"
+# wd_shp_path    <- "data/water_districts.gpkg"
+wr_net_path       <- "data/water_right_netamounts.rds"
+wr_pts_path       <- "data/water_right_netamounts_pts.rds"
+uwdids_path       <- "data/unique_wdids.rds"
+districts_path    <- "data/water_districts_tbl.rds"
+ms_path           <- "data/nhd_mainstems.rds"
+msu_path          <- "data/nhd_mainstems_union.rds"
+huc_path          <- "data/huc4.rds"
+end_pts_path      <- "data/upstream_pts.rds"
+call_path         <- "data/upstream_call_analysis.rds"
 dist_ms_path      <- "data/nhd_mainstems_district.rds"
 dist_msu_path     <- "data/nhd_mainstems_union_district.rds"
 dist_end_pts_path <- "data/upstream_pts_district.rds"
@@ -99,6 +104,15 @@ if(file.exists(wr_net_path)) {
     # save water rights netamount spatial data
     saveRDS(wr_pts, wr_pts_path)
     
+    message(paste0("Saving unique WDID data to path ---> ", uwdids_path))
+    
+    uwdids = data.frame(wdid = unique(wr_pts$wdid)) %>% 
+      dplyr::mutate(
+        water_district = substr(wdid, 1, 2)
+      )
+    
+    # save water rights netamount spatial data
+    saveRDS(uwdids, uwdids_path)
   }
   
 } else {
@@ -165,6 +179,16 @@ if(file.exists(wr_net_path)) {
     
   # save water rights netamount spatial data
   saveRDS(wr_pts, wr_pts_path)
+  
+  message(paste0("Saving unique WDID data to path ---> ", uwdids_path))
+  
+  uwdids = data.frame(wdid = unique(wr_pts$wdid)) %>% 
+    dplyr::mutate(
+      water_district = substr(wdid, 1, 2)
+    )
+  
+  # save water rights netamount spatial data
+  saveRDS(uwdids, uwdids_path)
   
   }
 
@@ -730,7 +754,3 @@ if(file.exists(dist_call_path)) {
   saveRDS(call_lst2, dist_call_path)
   
 }
-
-# *************
-# ---- tmp ----
-# *************

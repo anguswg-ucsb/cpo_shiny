@@ -93,6 +93,47 @@ dist_basemap <- function(shp) {
           "font-weight" = "1000")
       )
     )
+    # leaflet::addPolygons(
+    #   data        = shp,
+    #   fillColor = 'red',
+    #   fillOpacity = 0.7,
+    #   col = "red",
+    #   opacity = 1,
+    #   # weight = 2.5,
+    #   weight      = 1,
+    #   layerId     = ~map_id,
+    #   group       = ~new_id,
+    #   label = ~paste0("District: ", new_id),
+    #   labelOptions = labelOptions(
+    #     style     = list("font-weight" = "normal", padding = "3px 8px"),
+    #     textsize  = "15px",
+    #     direction = "auto"
+    #   )
+    #   # label       = ~map_id
+    # ) %>%
+    # leaflet::addPolygons(
+    #   data = shp,
+    #   # group = "base_hucs",
+    #   fillColor = 'white',
+    #   # fillColor = 'grey',
+    #   # fillColor = ~pal_fact(BASIN),
+    #   fillOpacity = 0.7,
+    #   col = "black",
+    #   opacity = 1,
+    #   weight = 2.5,
+    #   label = ~paste0("District: ", new_id),
+    #   layerId      = ~new_id,
+    #   group        = "regions",
+    #   labelOptions = labelOptions(
+    #     noHide = F,
+    #     # direction = 'center',
+    #     # textOnly = F)
+    #     style = list(
+    #       "color" = "black",
+    #       "font-weight" = "1000")
+    #   )
+    # ) %>% 
+    # leaflet::hideGroup(group = shp$new_id)
   
 }
 
@@ -550,18 +591,27 @@ make_calls_plot_year <- function(df) {
 make_highlight_calls_plot <- function(df, years) {
   
   # df <- call_df[call_df$wdid == end_pts[end_pts$huc4 == "1401",]$wdid, ]
-  
+  # df = calls
   # add day of year number and year columns
   df <- 
     df %>% 
     dplyr::mutate(
       day   = lubridate::yday(datetime),
+      # year  = as.character(lubridate::year(datetime))
       year  = as.character(year)
     ) 
   
   # add month label name per day number
   df$month <- lubridate::month(lubridate::ymd(paste0(df$year, "-01-01")) + lubridate::days(df$day - 1), label = TRUE)
   
+  # df <- 
+  #   df %>% 
+  #   dplyr::mutate(
+  #     priority_date = dplyr::case_when(
+  #       is.na(priority_date) ~ Sys.Date(),
+  #       TRUE                 ~ as.Date(priority_date)
+  #     )
+  #   )
   
   admin_highlight_plot <-
     df %>% 
@@ -607,6 +657,65 @@ make_highlight_calls_plot <- function(df, years) {
   
   
 }
+
+make_single_call_plot <- function(df,min_line, years) {
+  # df = calls
+  
+  # years = c(2022, 2021)
+  # tmp <- wr_pts[wr_pts$wdid == "0200509", ]
+  # tmp$appropriation_date <- as.Date(tmp$appropriation_date)
+  # local_date = min(tmp$appropriation_date)
+  
+  # tmp
+  df <- 
+    df %>% 
+    dplyr::mutate(
+      day   = lubridate::yday(datetime),
+      year  = as.character(lubridate::year(datetime))
+      # year  = as.character(datetime)
+    ) 
+  df$hline <- min_line
+  
+  # df$hline
+  # add month label name per day number
+  df$month <- lubridate::month(lubridate::ymd(paste0(df$year, "-01-01")) + lubridate::days(df$day - 1), label = TRUE)
+  
+  admin_plot <-
+    df %>% 
+    ggplot2::ggplot() +
+    ggplot2::geom_line(ggplot2::aes(x = day, y = priority_date, color = factor(year)),
+                       alpha = 0.9, size = 2.5) +
+    ggplot2::geom_hline(ggplot2::aes(x = day, y = priority_date), yintercept = min_line, size = 2.5, color = "black") +
+    ggplot2::scale_x_continuous(limits = c(1, 365)) +
+    ggplot2::scale_x_continuous(
+      breaks = c(1, 59, 120, 181, 242, 303, 365),
+      labels = c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Jan")) +
+    gghighlight::gghighlight(year %in% c(years), 
+                             unhighlighted_params = list(size = 1)) +
+    ggplot2::labs(
+      title = "Priority date vs. time",
+      # subtitle = "Colorado River Basin",
+      x     = "Month",
+      y     = "Priority Date",
+      color = "Year"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      plot.title        = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.subtitle     = ggplot2::element_text(size = 14, hjust = 0.5),
+      legend.title      = ggplot2::element_text(size = 18, hjust = 0.5, face = "bold"),
+      legend.text       = ggplot2::element_text(size = 16),
+      axis.title        = ggplot2::element_text(size = 16, face = "bold"),
+      axis.text         = ggplot2::element_text(size = 16),
+      legend.key.width  = unit(1.5, "cm"),
+      legend.text.align = 0,
+      legend.key.height = unit(1, "cm")
+    ) 
+
+  return(admin_plot)
+}
+
+
 
 # tmp_huc = "1019"
 # # select mainstem of HUC4 area

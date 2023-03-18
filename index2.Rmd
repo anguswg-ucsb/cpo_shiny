@@ -138,11 +138,11 @@ shiny::observeEvent(input$baseMap_shape_click, {
                     crs = 4326
                     )
           # 39.7792 -105.7214
-          # # 40.66392 -105.4837
+          # 40.66392 -105.4837
           # 40.69808 -105.6
           # pt <- sf::st_as_sf(
           #           data.frame(
-          #             lat = "40.69808",
+          #             lat = "39.978",
           #             lng =  "-105.6"
           #             ),
           #           coords = c("lng", "lat"),
@@ -154,8 +154,9 @@ shiny::observeEvent(input$baseMap_shape_click, {
           # select mainstem of HUC4 area
           fline <-
             main_stem %>%
-            # dplyr::filter(district == dist_id())
-            dplyr::filter(district == as.numeric("01"))
+            dplyr::filter(district == dist_id())
+            # dplyr::filter(district == as.numeric("06"))
+          
           # buffer bounds of mainstem for map fly to zoom
           bounds <-
             # buff %>%
@@ -198,16 +199,16 @@ shiny::observeEvent(input$baseMap_shape_click, {
           
           # subset to HUC4 of interest
           # sub_huc <- hucs[hucs$huc4 == huc_id(), ]
-          # sub_dist <- dists[dists$DISTRICT == as.numeric("01"), ]
+          # sub_dist <- dists[dists$DISTRICT == as.numeric("06"), ]
           sub_dist <- dists[dists$DISTRICT == dist_id(), ]
-          
+
           print("Updating leaflet map...")
           
           # dynamically alter leaflet map 
           leaflet::leafletProxy("baseMap") %>%
               leaflet::clearMarkers() %>%
               leaflet::clearShapes() %>%
-            leaflet::clearGroup(c("subhucs", "mainstems")) %>%
+            leaflet::clearGroup(c("subdist", "mainstems")) %>%
               # leaflet::removeShape(layerId = levelpathi) %>% 
               leaflet::addPolygons(
                     data         = dists,
@@ -236,6 +237,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
                   col          = "black",
                   opacity      = 1,
                   weight       = 3,
+                  group        = "subdist",
                   label        = ~paste0("District: ", DISTRICT),
                   layerId      = ~DISTRICT,
                   labelOptions = leaflet::labelOptions(
@@ -249,7 +251,8 @@ shiny::observeEvent(input$baseMap_shape_click, {
                   data        = fline,
                   stroke      = TRUE,
                   color       = "dodgerblue",
-                  opacity     = 0.7
+                  opacity     = 0.7,
+                  group        = "mainstems"
                   # layerId     = ~levelpathi
                   # fillColor   = "dodgerblue",
                   # fillOpacity = 1
@@ -282,11 +285,11 @@ shiny::observeEvent(input$baseMap_shape_click, {
 
           
           # # render call date over time plot
-          output$callDatePlot <- shiny::renderPlot({
-
-             make_calls_plot_year(df = call_ts())
-
-            })
+          # output$callDatePlot <- shiny::renderPlot({
+          # 
+          #    make_calls_plot_year(df = call_ts())
+          # 
+          #   })
           # 
           #  # render admin date map
           #  output$adminDatePlot <- shiny::renderPlot({
@@ -353,10 +356,10 @@ output$distID <- shiny::renderPrint({
 Row
 -------------------------------------
     
-### ggplot
-```{r}
-shiny::plotOutput("callDatePlot")
-```
+<!-- ### ggplot -->
+<!-- ```{r} -->
+<!-- shiny::plotOutput("callDatePlot") -->
+<!-- ``` -->
 
 <!-- ### Binned date map -->
 <!-- ```{r} -->
