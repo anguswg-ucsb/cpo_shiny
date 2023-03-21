@@ -78,8 +78,8 @@ dist_id <- shiny::reactive({
 
 ```{r context="server"}
 sub_pts <- shiny::reactive({
-   wr_pts[wr_pts$water_district == dist_id(),]
-   # sub_pts <- wr_pts[wr_pts$water_district == as.numeric("06"),]
+   # wr_pts[wr_pts$water_district == dist_id(),]
+   sub_pts <- wr_pts[wr_pts$water_district == as.numeric("06"),]
 })
 ```
 

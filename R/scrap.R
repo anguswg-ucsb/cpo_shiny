@@ -152,6 +152,10 @@ pt_nhd <- nhdplusTools::get_nhdplus(
   realization = "all"
 )
 
+shp = sf::read_sf("C:/Users/angus/OneDrive/Desktop/github/dss_co_nasa/data/co-huc10")
+shp
+
+sf::write_sf(shp, "D:/nasa_dss/data/co-huc10.gpkg")
 # NHD flowlines
 out   <- pt_nhd$outlet
 
@@ -207,27 +211,6 @@ min_fline <- sf::st_as_sf(
 
 # get Water right points
 wr_pts <- get_wr_pts(x = min_fline, buffer = 10)
-
-# # Get flowlines and catchment geometries
-# area_nhd <- nhdplusTools::get_nhdplus(
-#   AOI         = buff,
-#   realization = c("flowline", "catchment"),
-#   streamorder = 3
-#   )
-# 
-# # NHD flowlines
-# fline <- area_nhd$flowline
-# 
-# # NHD Catchment
-# catch <- area_nhd$catchment
-
-# mapview::mapview(buff) + pt + wr_pts + catch + fline
-
-# # get points nearest to the furthest upstream and downstream main stem river segments
-# end_pts <- get_nearest_pts(
-#               flowlines = fline,
-#               pts       = wr_pts
-#               )
 
 # get points nearest to the furthest upstream and downstream main stem river segments
 main_stem <- get_main_stem(
