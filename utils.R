@@ -71,6 +71,106 @@ dist_basemap <- function(shp) {
           "font-weight" = "1000")
       )
     )
+  
+  # pal <- leaflet::colorFactor(
+  #   palette = "RdYlBu",
+  #   domain = sub_flines$gnis_name)
+  # # dynamically alter leaflet map
+  # leaflet::leaflet() %>%
+  #   leaflet::addProviderTiles(providers$Esri.NatGeoWorldMap, group = "Nat Geo Topographic2") %>%
+  #   leaflet::addScaleBar("bottomleft") %>%
+  #   leafem::addMouseCoordinates() %>%
+  #   leaflet::setView(lng = -105.6, lat = 39.7, zoom = 7) %>% 
+  #   # leaflet::addPolygons(
+  #   #   data = dists,
+  #   #   # group = "base_hucs",
+  #   #   fillColor = 'white',
+  #   #   # fillColor = 'grey',
+  #   #   # fillColor = ~pal_fact(BASIN),
+  #   #   fillOpacity = 0.7,
+  #   #   col = "black",
+  #   #   opacity = 1,
+  #   #   weight = 2.5,
+  #   #   label = ~paste0("District: ", DISTRICT),
+  #   #   layerId = ~DISTRICT,
+  #   #   labelOptions = labelOptions(
+  #   #     noHide = F,
+  #   #     # direction = 'center',
+  #   #     # textOnly = F)
+  #   #     style = list(
+  #   #       "color" = "black",
+  #   #       "font-weight" = "1000")
+  #   #   )
+  #   # )
+  #   # leaflet::removeShape(layerId = levelpathi) %>%
+  #   leaflet::addPolygons(
+  #     data         = dists,
+  #     fillColor    = 'white',
+  #     # fillColor = 'grey',
+  #     # fillColor = ~pal_fact(BASIN),
+  #     fillOpacity  = 0.7,
+  #     col          = "black",
+  #     opacity      = 1,
+  #     weight       = 2.5,
+  #     label        = ~paste0("District: ", DISTRICT),
+  #     layerId      = ~DISTRICT,
+  #     labelOptions = leaflet::labelOptions(
+  #       noHide = F,
+  #       style  = list(
+  #         "color" = "black",
+  #         "font-weight" = "1000")
+  #     )
+  #   ) %>%
+  #   leaflet::addPolygons(
+  #     data         = sub_dist,
+  #     fillColor    = '#3EB489',
+  #     # fillColor = 'grey',
+  #     # fillColor = ~pal_fact(BASIN),
+  #     fillOpacity  = 0.5,
+  #     col          = "black",
+  #     opacity      = 1,
+  #     weight       = 3,
+  #     group        = "subdist",
+  #     label        = ~paste0("District: ", DISTRICT),
+  #     layerId      = ~DISTRICT,
+  #     labelOptions = leaflet::labelOptions(
+  #       noHide = F,
+  #       style  = list(
+  #         "color" = "black",
+  #         "font-weight" = "1000")
+  #     )
+  #   ) %>%
+  #   leaflet::addCircleMarkers(
+  #     # data        = sub_pts(),
+  #     data        = sub_pts,
+  #     radius      = 6,
+  #     stroke      = FALSE,
+  #     color       = "black",
+  #     opacity     = 0.6,
+  #     fillColor   = "black",
+  #     fillOpacity = 0.6,
+  #     label       = ~paste0("WDID: ", wdid, " - ( Approp date: ", appropriation_date, " )"),
+  #     labelOptions = leaflet::labelOptions(
+  #       noHide = F,
+  #       style  = list(
+  #         "color" = "black",
+  #         "font-weight" = "1000")
+  #     )
+  #   ) %>% 
+  #   leaflet::addPolylines(
+  #     # data = sub_flines(),
+  #     data = sub_flines,
+  #     color = ~pal(gnis_name),
+  #     label       = ~paste0("GNIS name: ", gnis_name),
+  #     labelOptions = leaflet::labelOptions(
+  #       noHide = F,
+  #       style  = list(
+  #         "color" = "black",
+  #         "font-weight" = "1000")
+  #     ),
+  #     opacity = 0.9,
+  #     stroke = TRUE
+  #   )
     # leaflet::addPolygons(
     #   data        = shp,
     #   fillColor = 'red',
@@ -637,13 +737,20 @@ make_highlight_calls_plot <- function(df, years) {
 }
 
 make_single_call_plot <- function(df,min_line, years) {
-
+  # df    = calls
+  # min_line = min_date
+  # years = 2020
+  # 
+  
   df <- 
     df %>% 
     dplyr::mutate(
       day   = lubridate::yday(datetime),
       year  = as.character(lubridate::year(datetime))
+      # week  = lubridate::week(datetime)
     ) 
+  
+  
   df$hline <- min_line
 
   # add month label name per day number
@@ -684,7 +791,122 @@ make_single_call_plot <- function(df,min_line, years) {
   return(admin_plot)
 }
 
+make_weekly_rightograph_plot <- function(df, min_line, years) {
+  
+  wdid_lab = unique(df$wdid)
+  
+  rightograph <- 
+    df %>% 
+    # dplyr::filter(year == 2022) %>%
+    ggplot2::ggplot() +
+    ggplot2::geom_line(ggplot2::aes(x = week, y = priority_date, color = factor(year)),
+                       alpha = 0.7, size = 2.5) +
+    ggplot2::geom_hline(ggplot2::aes(x = day, y = priority_date), yintercept = min_line, size = 2.5, color = "black") +
+    ggplot2::scale_x_continuous(
+      limits = c(1, 52), 
+      breaks =   seq(1, 52, length.out = length(c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec"))),
+      labels = c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec")
+      ) +
+    gghighlight::gghighlight(year %in% c(years),
+                                 unhighlighted_params = list(size = 1)) +
+    ggplot2::labs(
+      title = paste0("Right-o-graph (WDID: ", wdid_lab, ")"),
+      subtitle = "Water rights above priority date lines are called out by more senior rights at or below the priority date lines",
+      x     = "",
+      y     = "Priority Date",
+      color = "Year"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      plot.title        = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.subtitle     = ggplot2::element_text(size = 14, hjust = 0.5),
+      legend.title      = ggplot2::element_text(size = 18, hjust = 0.5, face = "bold"),
+      legend.text       = ggplot2::element_text(size = 16),
+      axis.title        = ggplot2::element_text(size = 16, face = "bold"),
+      axis.text         = ggplot2::element_text(size = 16),
+      legend.key.width  = unit(1.5, "cm"),
+      legend.text.align = 0,
+      legend.key.height = unit(1, "cm")
+    ) 
+  
+  return(rightograph)
+  
+ 
+}
 
+aggreg_weekly <- function(df) {
+
+  # calls$analysis_wdid
+  df <- 
+    df %>% 
+    dplyr::mutate(
+      day   = lubridate::yday(datetime),
+      year  = as.character(lubridate::year(datetime)), 
+      week  = lubridate::week(datetime),
+      week_date = lubridate::weeks(datetime )
+    ) %>% 
+    dplyr::group_by(year, week, analysis_wdid) %>% 
+    dplyr::summarise(
+      out_pct       = mean(analysis_out_of_priority_percent_of_day, na.rm = T)/100,
+      priority_date = mean(priority_date, na.rm = T)
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::rename(wdid = analysis_wdid)
+  
+  df$week_lab <- lubridate::month(lubridate::ymd(paste0(df$year, "-01-01")) + lubridate::weeks(df$week - 1), label = TRUE)
+  
+  return(df)
+}
+
+# aggreg_weekly(df = calls)
+
+make_weekly_out_pct_plot <- function(df, years) {
+  
+  # df    = aggreg_weekly(df = calls)
+  # min_line = min_date
+  # years = 2022
+  
+  
+  # rightograph <- 
+  out_pct_plot <-
+    df %>% 
+    # dplyr::filter(year == 2022) %>%
+    ggplot2::ggplot() +
+    ggplot2::geom_line(ggplot2::aes(x = week, y = out_pct, color = factor(year)),
+                       alpha = 0.7, size = 2.5) +
+    ggplot2::geom_hline(ggplot2::aes(x = day, y = out_pct), yintercept = mean(df$out_pct), size = 2.5, color = "black") +
+    ggplot2::scale_x_continuous(
+      limits = c(1, 52), 
+      breaks =   seq(1, 52, length.out = length(c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec"))),
+      labels = c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec")
+    ) +
+    ggplot2::scale_y_continuous(labels = scales::percent) +
+    gghighlight::gghighlight(year %in% c(years),
+                             unhighlighted_params = list(size = 1)) +
+    ggplot2::labs(
+      title = "Average time spent out of priority",
+      subtitle = "Weekly average",
+      caption = "Black horizontal line represents average % out of priority over the period of record", 
+      x     = "",
+      y     = "% out of priority",
+      color = "Year"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      plot.title        = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.subtitle     = ggplot2::element_text(size = 14, hjust = 0.5),
+      legend.title      = ggplot2::element_text(size = 18, hjust = 0.5, face = "bold"),
+      legend.text       = ggplot2::element_text(size = 16),
+      axis.title        = ggplot2::element_text(size = 16, face = "bold"),
+      axis.text         = ggplot2::element_text(size = 16),
+      legend.key.width  = unit(1.5, "cm"),
+      legend.text.align = 0,
+      legend.key.height = unit(1, "cm")
+    ) 
+  
+  return(out_pct_plot)
+  
+}
 
 # tmp_huc = "1019"
 # # select mainstem of HUC4 area

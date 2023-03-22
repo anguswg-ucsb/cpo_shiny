@@ -33,20 +33,27 @@ source('utils.R')
 
 ```{r context="server"}
 # water rights net amounts spatial data
-wr_pts     <- readRDS("water_right_netamounts_pts.rds")
+wr_pts         <- readRDS("water_right_netamounts_pts.rds")
+wr_pts$gnis_id <- sub("^0+", "",wr_pts$gnis_id)
+
 # uwdids     <- readRDS("data/unique_wdids.rds")
 end_pts    <- readRDS("data/upstream_pts_district.rds")
 # call_df    <- readRDS("data/upstream_call_analysis.rds")
 # hucs       <- readRDS("data/huc4.rds")
-# main_stem  <- readRDS("data/nhd_mainstems.rds")
+# main_stem  <- readRDS("data/nhd_mainstems.rds")]
 
-dists      <- sf::read_sf("data/water_districts.gpkg") %>% 
-  dplyr::mutate(
-    new_id = DISTRICT,
-    map_id = paste0("map_id_", new_id)
-  )
+gnis_flines <- readRDS("data/nhd_gnis_id_flines.rds")
+
+dists      <- sf::read_sf("data/water_districts_simple.geojson") 
+  # dplyr::mutate(
+  #   new_id = DISTRICT,
+  #   map_id = paste0("map_id_", new_id)
+  # )
 # main_stem  <- readRDS("data/nhd_mainstems_district.rds")
 # call_df    <- readRDS("data/upstream_call_analysis_district.rds")
+
+# number of years to do call analysis on 
+years <- 5
 
 # base leaflet map
 output$baseMap       <- renderLeaflet({ dist_basemap(shp = dists) })
@@ -75,10 +82,34 @@ dist_id <- shiny::reactive({
 <!-- # ``` -->
 
 ```{r context="server"}
-sub_pts <- shiny::reactive({
-   wr_pts[wr_pts$water_district == dist_id(),]
+sub_flines <- shiny::reactive({
+   gnis_flines[gnis_flines$district == dist_id(),]
    # sub_pts <- wr_pts[wr_pts$water_district == as.numeric("06"),]
 })
+```
+
+```{r context="server"}
+sub_pts <- shiny::reactive({
+  wr_pts[wr_pts$water_district == dist_id(),]
+  # if (is.null(sub_flines())) {
+  #   tmp <- wr_pts[wr_pts$water_district == dist_id(),]
+  #   tmp
+  # } else {
+  #   tmp <- wr_pts[wr_pts$water_district == dist_id(),]
+  #   tmp <- tmp[tmp$gnis_id %in% sub_flines()$gnis_id, ]
+  #   tmp
+  #   }
+  # sub_pts$gnis_id %in% sub_flines$gnis_id
+   # sub_pts <- wr_pts[wr_pts$water_district == as.numeric("06"),]
+})
+ # unique(sub_pts$gnis_id) %in% unique(sub_flines$gnis_id)
+ # wr_pts[wr_pts$wr_pts %in% sub_flines$gnis_id | wr_pts$water_district == as.numeric("06"), ]
+ # 
+ # 
+ # 
+ # unique(sub_flines$gnis_id)
+ # unique(sub_pts$gnis_id)
+ # unique(sub_flines$gnis_id) %in% sub("^0+", "",  unique(sub_pts$gnis_id))      
 ```
 
 ```{r context="server"}
@@ -121,12 +152,13 @@ Inputs {.sidebar}
 #   choices = 1990:2023,
 #   selected = 2022
 # )
-
 shiny::selectizeInput(
   inputId  = "selectedYears",
   label    = h3("Year"),
   choices  = 2018:2022,
   selected = 2022,
+  # choices  = 2018:2019,
+  # selected = 2018,
   multiple = TRUE
   )
 ```
@@ -218,7 +250,6 @@ shiny::observeEvent(input$baseMap_shape_click, {
           # subset to water district of interest
           sub_dist <- dists[dists$DISTRICT == dist_id(), ]
           
-          
           # area_nhd <- nhdplusTools::get_nhdplus(
           #   AOI         = sub_dist,
           #   realization = c("flowline"),
@@ -234,9 +265,26 @@ shiny::observeEvent(input$baseMap_shape_click, {
           # sub_pts  <- wr_pts[wr_pts$water_district == dist_id(), ]
           # sub_dist <- dists[dists$DISTRICT == as.numeric("06"), ]
           # sub_pts  <- wr_pts[wr_pts$water_district == as.numeric("06"), ]
+          # sub_flines  <- gnis_flines[gnis_flines$district == as.numeric("06"), ]
+          # sub_dist <- dists[dists$DISTRICT == as.numeric("06"), ]
 
           print("Updating leaflet map...")
-
+          
+          sub_pts2 = sub_pts()[sub_pts()$gnis_id %in% sub_flines()$gnis_id, ]
+          # Create a continuous palette function
+          fline_pal <- leaflet::colorFactor(
+            palette = "RdYlBu",
+            domain = sub_flines()$gnis_id
+            )
+          
+          pt_pal <- leaflet::colorFactor(
+            palette = "RdYlBu",
+            domain = sub_pts2$gnis_id
+            )
+          
+          message(paste0("Number Unique Point GNIS IDs: ", length(unique(sub_pts()$gnis_id))))
+          message(paste0("Number Unique Fline GNIS IDs: ", length(unique(sub_flines()$gnis_id))))
+          
           # dynamically alter leaflet map
           leaflet::leafletProxy("baseMap") %>%
               leaflet::clearMarkers() %>%
@@ -266,7 +314,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
                     fillColor    = '#3EB489',
                     # fillColor = 'grey',
                     # fillColor = ~pal_fact(BASIN),
-                    fillOpacity  = 0.5,
+                    fillOpacity  = 0.3,
                     col          = "black",
                     opacity      = 1,
                     weight       = 3,
@@ -280,15 +328,34 @@ shiny::observeEvent(input$baseMap_shape_click, {
                                           "font-weight" = "1000")
                                       )
                 ) %>%
-              leaflet::addCircleMarkers(
-                  data        = sub_pts(),
+              leaflet::addPolylines(
+                data = sub_flines(),
+                # data = sub_flines,
+                color = ~fline_pal(gnis_id),
+                opacity = 0.8,
+                    label       = ~paste0("GNIS name: ", gnis_name, " - ( GNIS ID: ", gnis_id, " )"),
+                labelOptions = leaflet::labelOptions(
+                  noHide = F,
+                  style  = list(
+                    "color" = "black",
+                    "font-weight" = "1000")
+                ),
+                stroke = T
+              ) %>% 
+            leaflet::addCircleMarkers(
+                  # data        = sub_pts(),
+                  # data = sub_pts()[sub_pts()$gnis_id %in% sub_flines()$gnis_id, ],
+                 data        = sub_pts2,
                   radius      = 6,
-                  stroke      = FALSE,
+                  stroke      = F,
                   color       = "black",
+                  # width = 0.5,
                   opacity     = 0.6,
-                  fillColor   = "black",
-                  fillOpacity = 0.6,
-                  label       = ~paste0("WDID: ", wdid, " - ( Approp date: ", appropriation_date, " )"),
+                  # fillColor   = "black",
+                  fillColor = ~pt_pal(gnis_id),
+                  fillOpacity = 0.7,
+                  # label       = ~paste0("WDID: ", wdid, " - ( Approp date: ", appropriation_date, " )"),
+                  label       = ~paste0("WDID: ", wdid, " - ( GNIS ID: ", gnis_id, " )"),
                   labelOptions = leaflet::labelOptions(
                                         noHide = F,
                                         style  = list(
@@ -296,12 +363,8 @@ shiny::observeEvent(input$baseMap_shape_click, {
                                           "font-weight" = "1000")
                                       )
                   ) 
-            # leaflet::addPolylines(
-            #   data = area_nhd,
-            #   color = "navy",
-            #   opacity = 0.9,
-            #   stroke = TRUE
-            # )
+          
+          
               # leaflet::addCircleMarkers(
               #         data        = sub_pts()[sub_pts()$wdid == input$selectWDID, ],
               #         radius      = 10,
@@ -339,12 +402,13 @@ shiny::observeEvent(input$baseMap_shape_click, {
                     leaflet::leafletProxy("baseMap") %>%
                         leaflet::clearGroup(c("singleWDID")) %>%
                         leaflet::addCircleMarkers(
-                            data        = sub_pts()[sub_pts()$wdid == input$selectWDID, ],
-                            radius      = 10,
+                            # data        = sub_pts()[sub_pts()$wdid == input$selectWDID, ],
+                            data        = sub_pts2[sub_pts2$wdid == input$selectWDID, ],  
+                            radius      = 11,
                             stroke      = FALSE,
-                            color       = "red",
-                            opacity     = 1,
-                            fillColor   = "red",
+                            color       = "black",
+                            opacity     = 0.9,
+                            fillColor   = "black",
                             group       = "singleWDID",
                             fillOpacity = 0.7,
                             label       = ~paste0("WDID: ", wdid, " - ( Approp date: ", appropriation_date, " )"),
@@ -366,26 +430,43 @@ shiny::observeEvent(input$baseMap_shape_click, {
                                               wdid       = input$selectWDID,
                                               # wdid = "0200509",
                                               admin_no   = "99999.00000",
-                                              start_date = Sys.Date() - 365*5,
+                                              # start_date = "2018-01-01",
+                                              # end_date   = "2019-12-31"
+                                              start_date = Sys.Date() - 365*years,
                                               end_date   = Sys.Date()
                                             ) %>%
                                      dplyr::mutate(
                                               priority_date = dplyr::case_when(
                                                 is.na(priority_date) ~ Sys.Date(),
                                                 TRUE                 ~ as.Date(priority_date)
+                                                # is.na(priority_date) ~ as.Date("2019-12-31"),
+                                                # TRUE                 ~ as.Date(priority_date)
                                               )
                                               )
 
                               # min_date =  min(as.Date(sf::st_drop_geometry(wr_pts[wr_pts$wdid == "0200509", ])$appropriation_date))
                               min_date =  min(as.Date(sf::st_drop_geometry(wr_pts[wr_pts$wdid == input$selectWDID,
                                                                                   ])$appropriation_date))
+                              
+                              calls    = aggreg_weekly(df = calls)
+                              
                          # render call date over time plot
-                         output$callDatePlot <- shiny::renderPlot({
+                         output$rightographPlot <- shiny::renderPlot({
   
-                            make_single_call_plot(
-                              df    = calls,
+                            make_weekly_rightograph_plot(
+                              df       = calls,
                               min_line = min_date, 
-                              years = input$selectedYears
+                              years    = input$selectedYears
+                              )
+  
+                            })
+                         
+                                    # render call date over time plot
+                         output$outpctPlot <- shiny::renderPlot({
+  
+                            make_weekly_out_pct_plot(
+                              df       = calls,
+                              years    = input$selectedYears
                               )
   
                             })
@@ -532,7 +613,6 @@ Row
 ### Table 
 ```{r}
 DT::DTOutput("selectedWDIDinput")
-
 ```
 
 ```{r context="server"}
@@ -547,23 +627,30 @@ output$selectedWDIDinput <- DT::renderDT({
   # DT::datatable(sf::st_drop_geometry(sub_pts))
   DT::datatable(
     dplyr::select(sf::st_drop_geometry(sub_pts()), -comments),  
-     fillContainer = TRUE,
+     style = "bootstrap",
+     fillContainer = T,
       options       = list(
         pageLength   = 25,
         stateSave    = TRUE,
-        lengthChange = FALSE,
-        dom          = "ft"
-        )
+        lengthChange = T,
+        dom          = "ft",
+        pageLength = 10)
+    )
      #  ) %>%
      # DT::formatRound(columns = c('Latitude', 'Longitude'),  digits = 2)
-    )
+    
   # print("admin dates: ", cdss_data())
 })
 ```
 
-### Priority date vs. date (year facets)
+### Right-o-graph
 ```{r}
-shiny::plotOutput("callDatePlot")
+shiny::plotOutput("rightographPlot")
+```
+
+### Out of priority percent
+```{r}
+shiny::plotOutput("outpctPlot")
 ```
 
 <!-- # --- -->
