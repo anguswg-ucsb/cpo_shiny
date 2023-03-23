@@ -67,6 +67,12 @@ map_click <- shiny::reactive({
 ```
 
 ```{r context="server"}
+date_input <- shiny::reactive({
+   input$dateInputVal
+})
+```
+
+```{r context="server"}
 dist_id <- shiny::reactive({
    as.numeric(input$baseMap_shape_click$id)
 })
@@ -174,6 +180,8 @@ shiny::selectizeInput(
   # options = list(plugins = list("remove_button"), 
   #                server = TRUE)
   )
+
+shiny::dateInput("dateInputVal", label = "Provide a water right date")
 
 shiny::observe({
  
@@ -445,8 +453,8 @@ shiny::observeEvent(input$baseMap_shape_click, {
                                               )
 
                               # min_date =  min(as.Date(sf::st_drop_geometry(wr_pts[wr_pts$wdid == "0200509", ])$appropriation_date))
-                              min_date =  min(as.Date(sf::st_drop_geometry(wr_pts[wr_pts$wdid == input$selectWDID,
-                                                                                  ])$appropriation_date))
+                              # min_date =  min(as.Date(sf::st_drop_geometry(wr_pts[wr_pts$wdid == input$selectWDID,
+                              #                                                     ])$appropriation_date))
                               
                               calls    = aggreg_weekly(df = calls)
                               
@@ -455,7 +463,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
   
                             make_weekly_rightograph_plot(
                               df       = calls,
-                              min_line = min_date, 
+                              min_line = date_input(), 
                               years    = input$selectedYears
                               )
   
@@ -610,6 +618,19 @@ shiny::observeEvent(input$baseMap_shape_click, {
 
 Row
 ------------------------------------------------
+
+### Right-o-graph
+```{r}
+shiny::plotOutput("rightographPlot")
+```
+
+### Out of priority percent
+```{r}
+shiny::plotOutput("outpctPlot")
+```
+
+Row
+------------------------------------------------
 ### Table 
 ```{r}
 DT::DTOutput("selectedWDIDinput")
@@ -626,7 +647,13 @@ output$selectedWDIDinput <- DT::renderDT({
   # DT::datatable(sub_pts())
   # DT::datatable(sf::st_drop_geometry(sub_pts))
   DT::datatable(
-    dplyr::select(sf::st_drop_geometry(sub_pts()), -comments),  
+    # dplyr::select(sf::st_drop_geometry(sub_pts()), -comments),  
+    dplyr::filter(
+      dplyr::select(sf::st_drop_geometry(sub_pts()), wdid, structure_name, structure_type,
+                    gnis_id, water_district, adjudication_date,prior_adjudication_date , adjudication_date, admin_number
+                    ),
+      wdid == input$selectWDID
+    ), 
      style = "bootstrap",
      fillContainer = T,
       options       = list(
@@ -634,25 +661,35 @@ output$selectedWDIDinput <- DT::renderDT({
         stateSave    = TRUE,
         lengthChange = T,
         dom          = "ft",
-        pageLength = 10)
+        pageLength = 10,
+        paging = TRUE
+        )
     )
      #  ) %>%
      # DT::formatRound(columns = c('Latitude', 'Longitude'),  digits = 2)
     
   # print("admin dates: ", cdss_data())
 })
+
+# dplyr::filter(
+#   dplyr::select(sf::st_drop_geometry(sub_pts()), wdid, structure_name, structure_type, gnis_id, water_district, adjudication_date,prior_adjudication_date , adjudication_date, admin_number
+#                 ),
+#   wdid == input$selectWDID
+# ) 
 ```
 
-### Right-o-graph
-```{r}
-shiny::plotOutput("rightographPlot")
-```
+<!-- ### tht -->
+<!-- ```{r} -->
+<!-- shiny::verbatimTextOutput("dateInputVal") -->
+<!-- ``` -->
 
-### Out of priority percent
-```{r}
-shiny::plotOutput("outpctPlot")
-```
+<!-- ```{r context="server"} -->
 
+<!-- # render district value box at start -->
+<!-- output$dateInputVal <- shiny::renderPrint({ -->
+<!--   print(date_input()) -->
+<!-- }) -->
+<!-- ``` -->
 <!-- # --- -->
 <!-- # title: "CO Water Rights" -->
 <!-- # runtime: shiny -->

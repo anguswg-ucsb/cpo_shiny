@@ -790,6 +790,37 @@ make_single_call_plot <- function(df,min_line, years) {
 
   return(admin_plot)
 }
+# stream_mile = "162.81"
+# gnis_id <- "201759"
+# wdid = "0100501"
+# admin_number <- "20226.00000"
+# 
+# gnis_calls <- cdssr::get_call_analysis_gnisid(
+#   gnis_id = gnis_id,
+#   # wdid = wdid,
+#   admin_no= admin_number,
+#   stream_mile = stream_mile,
+#   start_date = Sys.Date() - 365*years,
+#   end_date   = Sys.Date()
+# )
+# calls <- cdssr::get_call_analysis_wdid(
+#   wdid       = input$selectWDID,
+#   # wdid = "0200509",
+#   admin_no   = "99999.00000",
+#   # start_date = "2018-01-01",
+#   # end_date   = "2019-12-31"
+#   start_date = Sys.Date() - 365*years,
+#   end_date   = Sys.Date()
+# ) %>%
+#   dplyr::mutate(
+#     priority_date = dplyr::case_when(
+#       is.na(priority_date) ~ Sys.Date(),
+#       TRUE                 ~ as.Date(priority_date)
+#       # is.na(priority_date) ~ as.Date("2019-12-31"),
+#       # TRUE                 ~ as.Date(priority_date)
+#     )
+#   )
+
 
 make_weekly_rightograph_plot <- function(df, min_line, years) {
   
@@ -812,6 +843,7 @@ make_weekly_rightograph_plot <- function(df, min_line, years) {
     ggplot2::labs(
       title = paste0("Right-o-graph (WDID: ", wdid_lab, ")"),
       subtitle = "Water rights above priority date lines are called out by more senior rights at or below the priority date lines",
+      caption = "Black horizontal line represents average % out of priority over the period of record",
       x     = "",
       y     = "Priority Date",
       color = "Year"
@@ -857,7 +889,9 @@ aggreg_weekly <- function(df) {
   
   return(df)
 }
-
+# library(terra)
+# tt <-   raster::raster(terra::rast("C:/Users/angus/Downloads/2000_01.tif"))
+# plot(tt)
 # aggreg_weekly(df = calls)
 
 make_weekly_out_pct_plot <- function(df, years) {
@@ -874,7 +908,7 @@ make_weekly_out_pct_plot <- function(df, years) {
     ggplot2::ggplot() +
     ggplot2::geom_line(ggplot2::aes(x = week, y = out_pct, color = factor(year)),
                        alpha = 0.7, size = 2.5) +
-    ggplot2::geom_hline(ggplot2::aes(x = day, y = out_pct), yintercept = mean(df$out_pct), size = 2.5, color = "black") +
+    # ggplot2::geom_hline(ggplot2::aes(x = day, y = out_pct), yintercept = mean(df$out_pct), size = 2.5, color = "black") +
     ggplot2::scale_x_continuous(
       limits = c(1, 52), 
       breaks =   seq(1, 52, length.out = length(c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec"))),
@@ -886,7 +920,7 @@ make_weekly_out_pct_plot <- function(df, years) {
     ggplot2::labs(
       title = "Average time spent out of priority",
       subtitle = "Weekly average",
-      caption = "Black horizontal line represents average % out of priority over the period of record", 
+      # caption = "Black horizontal line represents average % out of priority over the period of record",
       x     = "",
       y     = "% out of priority",
       color = "Year"
