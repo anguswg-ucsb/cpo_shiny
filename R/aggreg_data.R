@@ -14,7 +14,8 @@ library(climateR)
 # ***********************
 
 # Paths
-# wd_shp_path    <- "data/water_districts.gpkg"
+# wd_shp_path       <- "data/water_districts.gpkg"
+wd_shp_path       <- "data/water_districts_simple.geojson"
 wr_net_path       <- "data/water_right_netamounts.rds"
 wr_pts_path       <- "data/water_right_netamounts_pts.rds"
 uwdids_path       <- "data/unique_wdids.rds"
@@ -28,6 +29,7 @@ dist_ms_path      <- "data/nhd_mainstems_district.rds"
 dist_msu_path     <- "data/nhd_mainstems_union_district.rds"
 dist_end_pts_path <- "data/upstream_pts_district.rds"
 dist_call_path    <- "data/upstream_call_analysis_district.rds"
+gnis_path         <- "data/nhd_gnis_id_flines.rds"
 
 # ***********************************
 # ---- get water districts table ----
@@ -752,5 +754,102 @@ if(file.exists(dist_call_path)) {
   
   # save call analysis data
   saveRDS(call_lst2, dist_call_path)
+  
+}
+
+
+
+# ***************************
+# ---- get GNIS ID lines ----
+# ***************************
+
+# check if mainstem data path exists
+if(file.exists(gnis_path)) {
+  
+  message(paste0("Reading data from ---> ", gnis_path))
+  
+  gnis_flines <- readRDS(gnis_path)
+  
+  if(file.exists(wd_shp_path)) {
+    
+    message(paste0("Reading data from ---> ", wd_shp_path))
+    
+    dist_shp <- sf::read_sf(wd_shp_path)
+    
+  } else {
+    stop(paste0("Data not found at path ---> ", wd_shp_path))
+  }
+  
+} else {
+  
+  message(paste0("Data not found at path ---> ", gnis_path))
+  
+  if(file.exists(wd_shp_path)) {
+    
+    message(paste0("Reading data from ---> ", wd_shp_path))
+    
+    dist_shp <- sf::read_sf(wd_shp_path)
+    
+  } else {
+    stop(paste0("Data not found at path ---> ", wd_shp_path))
+  }
+  # i = 1
+  # loop over each huc4 and get mainstem of the river
+  gnis_flines <- lapply(1:nrow(dist_shp), function(i) {
+    
+    message(paste0(i, "/", nrow(dist_shp)))
+    
+    gnis <- nhdplusTools::get_nhdplus(
+      AOI         = dist_shp[i, ],
+      realization = "flowline"
+    )
+      # gnis %>% 
+      # ggplot2::ggplot() +
+      # ggplot2::geom_sf(ggplot2::aes(color = factor(gnis_id)))
+    # dist_net %>% 
+      # ggplot2::ggplot() +
+      # ggplot2::geom_sf(ggplot2::aes(color = factor(gnis_id)))
+    # mapview::mapview(dist_net$geometry)
+    # gnis$gnis_id %>% as.numeric()
+    # gnis$gnis_id[37]
+    # sprintf("%0.4f", as.numeric(gnis$gnis_id[37]))
+    # value <- "1595922"
+    # sprintf("%09s", value)
+    
+    tryCatch({
+
+      gnis <-
+        gnis %>% 
+        dplyr::group_by(gnis_id, gnis_name) %>% 
+        dplyr::filter(gnis_id != " ") %>% 
+        dplyr::filter(streamcalc != 0) %>%
+        dplyr::summarise() %>% 
+        dplyr::mutate(
+          len   = units::drop_units(sf::st_length(geometry)),
+          unit  = "meters"
+        ) %>% 
+        dplyr::arrange(-len) %>% 
+        dplyr::ungroup() %>% 
+        dplyr::mutate(district = dist_shp$DISTRICT[i]) %>% 
+        dplyr::select(district, gnis_id, gnis_name, len, unit, geometry)
+      
+      gnis
+
+    }, error = function(e) {
+      
+      message(paste0("Skipping iteration: ", i, "Error:\n", e))
+      
+      NULL
+      
+    })
+    
+    
+  }) %>% 
+    dplyr::bind_rows()
+  # sprintf("%.5s", sub_flines$gnis_id[1])
+  message(paste0("Saving data to path ---> ", gnis_path))
+  
+  # save rds
+  saveRDS(gnis_flines, gnis_path)
   
 }
