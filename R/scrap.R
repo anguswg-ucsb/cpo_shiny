@@ -13,10 +13,6 @@ library(leaflet)
 library(leafem)
 # library(sf)
 
-# water data
-# library(nhdplusTools)
-# library(cdssr)
-
 # Load function data_utils.R file
 source('utils.R')
 

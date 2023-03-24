@@ -834,24 +834,7 @@ if(file.exists(gnis_path)) {
         dplyr::select(district, gnis_id, gnis_name, len, unit, geometry)
       
       gnis
-      # library(stringr)
-      # 
-      # value <- "1595922"
-      # tmp <-
-      #   wr_pts %>%
-      #   dplyr::mutate(
-      #     padding = substr(gnis_id, 1, 2),
-      #     tmpcol  = dplyr::case_when(
-      #       padding == "00" ~ TRUE,
-      #       TRUE            ~ FALSE
-      #     )
-      #   )
-      # str_pad(value, width = 9, pad = "0", side = "left")
-      # for (i in 1:length(unique(gnis_flines$gnis_id))) {
-      #   message(paste0("unique gnisid: ", unique(sub_flines$gnis_id)[i])) 
-      #   message(paste0("unique gnisid: ", nchar(unique(sub_flines$gnis_id)[i])))
-      # }
-      # mapview::mapview(dist_shp) + min_lvl
+
     }, error = function(e) {
       
       message(paste0("Skipping iteration: ", i, "Error:\n", e))
