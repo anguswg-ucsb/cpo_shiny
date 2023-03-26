@@ -6,15 +6,12 @@ library(cdssr)
 library(dplyr)
 library(climateR)
 
-# AOI    <- sf::read_sf("https://climate-catalog-data.s3.amazonaws.com/example_aoi.gpkg")
-# library(terra)
-
 # ***********************
 # ---- Paths to data ----
 # ***********************
 
-# Paths
-# wd_shp_path       <- "data/water_districts.gpkg"
+# TODO: find a better place/way to keep track and store all these files for shiny dashboard
+# Paths, manually added these as I went. 
 wd_shp_path       <- "data/water_districts_simple.geojson"
 wr_net_path       <- "data/water_right_netamounts.rds"
 wr_pts_path       <- "data/water_right_netamounts_pts.rds"
@@ -351,18 +348,6 @@ if(file.exists(ms_path)) {
     
       })
     
-    # plot(huc_net$geometry)
-    # plot(min_lvl$geometry, lwd = 2, color = "red", add = T)
-    # plot(um_net$geometry, color = "red", add = T)
-    
-    # min_lvl %>% dplyr::mutate(streamleve = as.character(streamleve),
-    #            streamorde = as.character(streamorde)) %>% 
-    #   ggplot2::ggplot() + ggplot2::geom_sf(ggplot2::aes(color = hydroseq))
-    
-    # mapview::mapview(ends, color = "green") +
-    #   mapview::mapview(um_net, color = "blue") +
-    #   mapview::mapview(min_lvl, color = "red")
-    
   }) %>% 
     dplyr::bind_rows()
   
@@ -435,7 +420,6 @@ if(file.exists(end_pts_path)) {
   saveRDS(end_pts, end_pts_path)
   
 }
-
 
 # ***************************
 # ---- get call_analysis ----
@@ -803,18 +787,6 @@ if(file.exists(gnis_path)) {
       AOI         = dist_shp[i, ],
       realization = "flowline"
     )
-      # gnis %>% 
-      # ggplot2::ggplot() +
-      # ggplot2::geom_sf(ggplot2::aes(color = factor(gnis_id)))
-    # dist_net %>% 
-      # ggplot2::ggplot() +
-      # ggplot2::geom_sf(ggplot2::aes(color = factor(gnis_id)))
-    # mapview::mapview(dist_net$geometry)
-    # gnis$gnis_id %>% as.numeric()
-    # gnis$gnis_id[37]
-    # sprintf("%0.4f", as.numeric(gnis$gnis_id[37]))
-    # value <- "1595922"
-    # sprintf("%09s", value)
     
     tryCatch({
 
