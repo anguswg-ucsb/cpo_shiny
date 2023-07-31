@@ -821,7 +821,141 @@ make_single_call_plot <- function(df,min_line, years) {
 #     )
 #   )
 
+aggreg_by_year_type <- function(df) {
+  
+  df <-
+    df %>% 
+    dplyr::group_by(district, year_type, week) %>% 
+    dplyr::summarise(priority_date = mean(priority_date, na.rm = T)) %>% 
+    dplyr::ungroup()
+  
+  return(df)
+  
+}
+make_yeartype_rightograph_plot <- function(df, district, yeartype) {
+  yeartype = "average"
+  dist = 1
+  
+  df <- 
+    weekly_calls %>% 
+    dplyr::filter(
+      district == dist,
+      year_type == yeartype
+      )
+  
+  
+  district_lab = unique(df$district)
+  
+  # rightograph <- 
+  df %>% 
+    # dplyr::filter(year == 2022) %>%
+    ggplot2::ggplot() +
+    ggplot2::geom_line(ggplot2::aes(x = week, 
+                                    y = priority_date,
+                                    color = factor(year)),
+                       alpha = 0.7,
+                       size = 2.5
+    ) 
+    # ggplot2::geom_hline(ggplot2::aes(x = day, y = priority_date), yintercept = min_line, size = 2.5, color = "black") +
+    ggplot2::scale_x_continuous(
+      limits = c(1, 52), 
+      breaks =   seq(1, 52, length.out = length(c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec"))),
+      labels = c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec")
+    ) +
+    gghighlight::gghighlight(year %in% c(years),
+                             unhighlighted_params = list(size = 1)) +
+    ggplot2::labs(
+      title = paste0("Right-o-graph (WDID: ", wdid_lab, ")"),
+      subtitle = "Water rights above priority date lines are called out by more senior rights at or below the priority date lines",
+      caption = "Black horizontal line represents average % out of priority over the period of record",
+      x     = "",
+      y     = "Priority Date",
+      color = "Year"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      plot.title        = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.subtitle     = ggplot2::element_text(size = 14, hjust = 0.5),
+      legend.title      = ggplot2::element_text(size = 18, hjust = 0.5, face = "bold"),
+      legend.text       = ggplot2::element_text(size = 16),
+      axis.title        = ggplot2::element_text(size = 16, face = "bold"),
+      axis.text         = ggplot2::element_text(size = 16),
+      legend.key.width  = unit(1.5, "cm"),
+      legend.text.align = 0,
+      legend.key.height = unit(1, "cm")
+    ) 
+  
+  return(rightograph)
+  
+  
+}
 
+make_avg_yeartype_rightograph_plot <- function(df, type) {
+  
+  # df <- weekly_calls
+  # yeartype = "average"
+  # dist = 1
+  # avg_yeartype
+  # df <- 
+  #   # weekly_calls %>% 
+  #   avg_yeartype %>% 
+  #   dplyr::filter(
+  #     district == dist
+  #   )
+  # type = "dry"
+  district_lab = unique(df$district)
+  
+  rightograph <-
+    df %>% 
+    # dplyr::filter(year == 2022) %>%
+    ggplot2::ggplot() +
+    ggplot2::geom_line(ggplot2::aes(x = week, 
+                                    y = priority_date,
+                                    color = factor(year_type)),
+                       alpha = 0.7,
+                       size = 2.5
+                       ) +
+    # ggplot2::geom_hline(ggplot2::aes(x = day, y = priority_date), yintercept = min_line, size = 2.5, color = "black") +
+    ggplot2::scale_x_continuous(
+      limits = c(1, 52), 
+      breaks =   seq(1, 52, length.out = length(c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec"))),
+      labels = c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec")
+    ) +
+    gghighlight::gghighlight(
+      year_type %in% c(type),
+      unhighlighted_params = list(size = 1)
+      ) +
+    ggplot2::scale_color_manual(values = c("Wet" = "dodgerblue", "Average" = "orange", "Dry" = "darkred"), 
+                                guide = ggplot2::guide_legend(
+                                direction = "horizontal",
+                                title.position = "top"
+    )) +
+    ggplot2::labs(
+      title = paste0("Right-o-graph (District: ", district_lab, ")"),
+      # subtitle = "Water rights above priority date lines are called out by more senior rights at or below the priority date lines",
+      # caption = "Black horizontal line represents average % out of priority over the period of record",
+      x     = "",
+      y     = "Priority Date",
+      color = "Year"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      plot.title        = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.subtitle     = ggplot2::element_text(size = 14, hjust = 0.5),
+      legend.title      = ggplot2::element_text(size = 18, hjust = 0.5, face = "bold"),
+      legend.text       = ggplot2::element_text(size = 16),
+      legend.position   = "bottom",
+      axis.title        = ggplot2::element_text(size = 16, face = "bold"),
+      axis.text         = ggplot2::element_text(size = 16),
+      legend.key.width  = unit(1.5, "cm"),
+      legend.text.align = 0,
+      legend.key.height = unit(1, "cm")
+    ) 
+  
+  return(rightograph)
+  
+  
+}
 make_weekly_rightograph_plot <- function(df, min_line, years) {
   
   wdid_lab = unique(df$wdid)
@@ -864,6 +998,43 @@ make_weekly_rightograph_plot <- function(df, min_line, years) {
   return(rightograph)
   
  
+}
+
+aggreg_weekly_district <- function(df, omit_na = TRUE) {
+  
+  # calls$analysis_wdid
+  df <-
+    df %>%
+    dplyr::mutate(
+      day   = lubridate::yday(datetime),
+      year  = as.character(lubridate::year(datetime)), 
+      week  = lubridate::week(datetime),
+      week_date = lubridate::weeks(datetime )
+    ) %>% 
+    dplyr::group_by(year, week, district) %>% 
+    dplyr::summarise(
+      out_pct       = mean(analysis_out_of_priority_percent_of_day, na.rm = T)/100,
+      priority_date = mean(priority_date, na.rm = T)
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      year_type = dplyr::case_when(
+        year >= 1970 & year < 1985 ~ "dry",
+        year >= 1985 & year < 2000 ~ "average",
+        year >= 2000 ~ "wet"
+      )
+    )
+  # %>% 
+  #   dplyr::rename(wdid = analysis_wdid)
+  
+  df$week_lab <- lubridate::month(lubridate::ymd(paste0(df$year, "-01-01")) + lubridate::weeks(df$week - 1), label = TRUE)
+  
+  
+  if(omit_na) {
+    df <- na.omit(df)
+  }
+  
+  return(df)
 }
 
 aggreg_weekly <- function(df) {

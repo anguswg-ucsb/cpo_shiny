@@ -1,0 +1,283 @@
+---
+title: "Historial Colorado Water Rights"
+runtime: shiny
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+---
+
+```{r setup, include = FALSE}
+# Shiny & Flexdashboard packages
+library(shiny)
+library(flexdashboard)
+
+# Data manipulation
+# library(tidyr)
+# library(dplyr)
+library(dplyr)
+library(ggplot2)
+library(DT)
+
+# Mapping packages
+library(leaflet)
+library(leafem)
+# water data
+# library(nhdplusTools)
+# library(cdssr)
+
+# Load function data_utils.R file
+source('utils.R')
+```
+
+```{r context="server"}
+# water rights net amounts spatial data
+
+# wrs <- readr::read_csv("data/detrended_all_data_final.csv")
+# raw <- readr::read_csv("/Users/anguswatters/Downloads/cdss_raw_daily_call_data_combined.csv")
+# weekly_calls <- aggreg_weekly_district(raw)
+# avg_yeartype <-  aggreg_by_year_type(weekly_calls) %>% 
+#     dplyr::mutate(
+#     year_type = dplyr::case_when(
+#                     year_type == "average" ~ "Average",
+#                     year_type == "wet" ~ "Wet",
+#                     year_type == "dry" ~ "Dry"
+#                   )
+#     )
+# saveRDS(weekly_calls, "data/weekly_calls_by_district.rds")
+# saveRDS(avg_yeartype, "data/weekly_calls_by_yeartype.rds")
+# dists      <- sf::read_sf("data/water_districts_simple.geojson") 
+# dists2 <- 
+#   dists %>% 
+#   dplyr::filter(DISTRICT %in% c(unique(avg_yeartype$district)))
+# sf::write_sf(dists2, "data/water_districts_subset.gpkg")  
+
+# weekly calls data
+weekly_calls <- readRDS("data/weekly_calls_by_district.rds")
+
+# average year type average priority date 
+avg_yeartype <- readRDS("data/weekly_calls_by_yeartype.rds") 
+
+# subset of districts
+dists      <- sf::read_sf("data/water_districts_subset.gpkg")
+
+# base leaflet map
+output$baseMap       <- renderLeaflet({ dist_basemap(shp = dists) })
+
+```
+
+```{r context="server"}
+map_click <- shiny::reactive({
+   input$baseMap_click
+})
+```
+
+```{r context="server"}
+date_input <- shiny::reactive({
+   input$dateInputVal
+})
+```
+
+```{r context="server"}
+dist_id <- shiny::reactive({
+   # as.numeric(input$baseMap_shape_click$id)
+   input$baseMap_shape_click$id
+})
+```
+
+```{r context="server"}
+call_year_df <- shiny::reactive({
+  avg_yeartype %>% 
+    dplyr::filter(district == dist_id())
+    # dplyr::filter(district == dist_id(), 
+    #               year_type == input$radioYearTypeButtons)
+})
+```
+
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+shiny::radioButtons(
+  inputId  = "radioYearTypeButtons",
+  label = "Distribution type:",
+  choices = c(
+    "Dry"    = "Dry",
+   "Average" = "Average",
+   "Wet"     = "Wet"
+   ),
+  selected = "Average"
+  )
+
+```
+
+Row
+--------------------------------------------------------
+```{r context="server"}
+# # render district value box at start
+# output$distID <- shiny::renderPrint({
+#   print(dist_id())
+# })
+```
+
+
+### Map 1
+```{r}
+leaflet::leafletOutput("baseMap")
+```
+
+```{r context="server"}
+# Clicking on map 1 outputs Value boxes on both pages + catchment polygons + Dat table + success panel
+# observeEvent(input$districtMapMLR_click, {
+shiny::observeEvent(input$baseMap_shape_click, {
+
+   if(is.null(dist_id())) {
+
+     return(NULL)
+
+   } else {
+
+   # # if(!is.null(input$districtMapMLR_click)) {
+   #    click <- input$districtMapMLR_click %>%
+   #      data.frame() %>%
+   #      dplyr::select(lat,lng)
+      # print(click)
+
+          pt <- sf::st_as_sf(
+                    data.frame(
+                      lat = map_click()$lat,
+                      lng = map_click()$lng
+                      ),
+                    coords = c("lng", "lat"),
+                    crs = 4326
+                    )
+          # 39.7792 -105.7214
+          # 40.66392 -105.4837
+          # 40.69808 -105.6
+          # pt <- sf::st_as_sf(
+          #           data.frame(
+          #             lat = "39.978",
+          #             lng =  "-105.6"
+          #             ),
+          #           coords = c("lng", "lat"),
+          #           crs = 4326
+          #           )
+
+          print(paste0("Subsetting mainstems to HUC4: ",  dist_id()))
+
+          print("Subsetting WDIDs to district area...")
+
+          # subset to water district of interest
+          sub_dist <- dists[dists$DISTRICT == dist_id(), ]
+
+
+          # area_nhd <- nhdplusTools::get_nhdplus(
+          #   AOI         = sub_dist,
+          #   realization = c("flowline"),
+          #   streamorder = 5
+          #   )
+
+          # nhdplusTools::navigate_network(
+          #   start = pt,
+          #
+          # )
+
+
+          # sub_pts  <- wr_pts[wr_pts$water_district == dist_id(), ]
+          # sub_dist <- dists[dists$DISTRICT == as.numeric("06"), ]
+          # sub_pts  <- wr_pts[wr_pts$water_district == as.numeric("06"), ]
+
+          print("Updating leaflet map...")
+
+          # dynamically alter leaflet map
+          leaflet::leafletProxy("baseMap") %>%
+              leaflet::clearMarkers() %>%
+              leaflet::clearShapes() %>%
+              leaflet::clearGroup(c("subdist")) %>%
+                # leaflet::removeShape(layerId = levelpathi) %>%
+                leaflet::addPolygons(
+                      data         = dists,
+                      fillColor    = 'white',
+                      # fillColor = 'grey',
+                      # fillColor = ~pal_fact(BASIN),
+                      fillOpacity  = 0.7,
+                      col          = "black",
+                      opacity      = 1,
+                      weight       = 2.5,
+                      label        = ~paste0("District: ", DISTRICT),
+                      layerId      = ~DISTRICT,
+                      labelOptions = leaflet::labelOptions(
+                                          noHide = F,
+                                          style  = list(
+                                            "color" = "black",
+                                            "font-weight" = "1000")
+                                        )
+                  ) %>%
+                leaflet::addPolygons(
+                    data         = sub_dist,
+                    fillColor    = '#3EB489',
+                    # fillColor = 'grey',
+                    # fillColor = ~pal_fact(BASIN),
+                    fillOpacity  = 0.5,
+                    col          = "black",
+                    opacity      = 1,
+                    weight       = 3,
+                    group        = "subdist",
+                    label        = ~paste0("District: ", DISTRICT),
+                    layerId      = ~DISTRICT,
+                    labelOptions = leaflet::labelOptions(
+                                        noHide = F,
+                                        style  = list(
+                                          "color" = "black",
+                                          "font-weight" = "1000")
+                                      )
+                )
+            # leaflet::addPolylines(
+            #   data = area_nhd,
+            #   color = "navy",
+            #   opacity = 0.9,
+            #   stroke = TRUE
+            # )
+              # leaflet::addCircleMarkers(
+              #         data        = sub_pts()[sub_pts()$wdid == input$selectWDID, ],
+              #         radius      = 10,
+              #         stroke      = FALSE,
+              #         color       = "red",
+              #         opacity     = 1,
+              #         fillColor   = "red",
+              #         fillOpacity = 0.7
+              #         )
+            # leaflet::addCircleMarkers(
+            #   data = sub_pts$
+            #
+            # )
+
+             shiny::observe({
+
+                  if(is.null(dist_id())) {
+
+                       return(NULL)
+             #
+                     } else {
+            
+                     # render call date over time plot
+                     output$callDatePlot <- shiny::renderPlot({
+                       
+                        make_avg_yeartype_rightograph_plot(
+                          df    = call_year_df(),
+                          type  = input$radioYearTypeButtons
+                          )
+
+                        })
+                       }
+               })
+             }
+          })
+```
+
+Row
+----------------------------------------------
+
+### Map 1
+```{r}
+shiny::plotOutput("callDatePlot")
+```
