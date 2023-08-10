@@ -61,14 +61,57 @@ avg_yeartype <- readRDS("data/weekly_calls_by_yeartype.rds")
 # subset of districts
 dists      <- sf::read_sf("data/water_districts_subset.gpkg")
 
-# base leaflet map
+# districts for Linear Regression models on Page 2
+model_dists <- 
+  dists %>% 
+  dplyr::filter(DISTRICT %in% c("1", "5", "8", "64")) %>% 
+  dplyr::mutate(
+    DISTRICT = ifelse(DISTRICT < 10, paste0("0", DISTRICT), as.character(DISTRICT))
+  )
+
+# temporary dataset of model info for each district
+model_map <- dplyr::tibble(
+              district   = c("01", "05", "08", "64"),
+              resp_var   = c("avg_call_year","avg_call_year", "avg_call_year","avg_call_year"),
+              predictor  = c("swe","fx", "swe","fx")
+            )
+
+# fake test data to simulate models
+mod_df <- dplyr::tibble(
+                district      = rep(model_map$district, each = 20),
+                resp_var      = rep(model_map$resp_var, each = 20),
+                predictor     = rep(model_map$predictor, each = 20),
+                predictor_val = c(
+                  runif(20, min = 0, max = 600),
+                  runif(20, min = 0, max = 250),
+                  runif(20, min = 0, max = 600),
+                  runif(20, min = 0, max = 250)
+                  # seq(0, 600, length.out = 20),
+                  # seq(0, 250, length.out = 20),
+                  # seq(0, 600, length.out = 20),
+                  # seq(0, 250, length.out = 20)
+                ),
+                resp_val = rep(runif(20, min = 1800, max = 2023), 4)
+                # resp_val      = runif(80, min = 1800, max = 2023)
+                # resp_val      = rep(seq(1800, 2023, length.out = 20), 4)
+              )
+
+# base leaflet map on page 1
 output$baseMap       <- renderLeaflet({ dist_basemap(shp = dists) })
 
+# Model base leaflet map on page 2
+output$modelBaseMap       <- renderLeaflet({ dist_basemap(shp = model_dists) })
 ```
 
 ```{r context="server"}
 map_click <- shiny::reactive({
    input$baseMap_click
+})
+```
+
+```{r context="server"}
+model_map_click <- shiny::reactive({
+   input$modelBaseMap_click
 })
 ```
 
@@ -86,6 +129,19 @@ dist_id <- shiny::reactive({
 ```
 
 ```{r context="server"}
+model_dist_id <- shiny::reactive({
+   # as.numeric(input$baseMap_shape_click$id)
+  if(is.null(input$modelBaseMap_shape_click$id)) {
+    return(" ")
+  } else {
+    input$modelBaseMap_shape_click$id
+  }
+   # input$modelBaseMap_shape_click$id
+})
+
+```
+
+```{r context="server"}
 call_year_df <- shiny::reactive({
   avg_yeartype %>% 
     dplyr::filter(district == dist_id())
@@ -93,6 +149,18 @@ call_year_df <- shiny::reactive({
     #               year_type == input$radioYearTypeButtons)
 })
 ```
+
+```{r context="server"}
+dist_mod_df <- shiny::reactive({
+  mod_df %>% 
+    dplyr::filter(district == model_dist_id())
+    # dplyr::filter(district == dist_id(), 
+    #               year_type == input$radioYearTypeButtons)
+})
+```
+
+Page 1
+=====================================================
 
 Inputs {.sidebar}
 -----------------------------------------------------------------------
@@ -107,7 +175,6 @@ shiny::radioButtons(
    ),
   selected = "Average"
   )
-
 ```
 
 Row
@@ -118,7 +185,6 @@ Row
 #   print(dist_id())
 # })
 ```
-
 
 ### Map 1
 ```{r}
@@ -281,3 +347,316 @@ Row
 ```{r}
 shiny::plotOutput("callDatePlot")
 ```
+
+Page 2
+=====================================================
+Inputs {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+shiny::textInput(inputId = "newDataInput", 
+                 label   = "Enter new data...",
+                 value   = NULL
+                 )
+
+shiny::actionButton("newDataInputButton",
+                    label = "Predict")
+# shiny::actionButton()
+# shiny::radioButtons(
+#   inputId  = "radioYearTypeButtons",
+#   label = "Distribution type:",
+#   choices = c(
+#     "Dry"    = "Dry",
+#    "Average" = "Average",
+#    "Wet"     = "Wet"
+#    ),
+#   selected = "Average"
+#   )
+```
+
+Row
+------------------------------------------------
+### 
+```{r}
+flexdashboard::valueBoxOutput("districtValueBox")
+```
+
+```{r context="server"}
+# flexdashboard::valueBox(value = model_dist_id())
+
+output$districtValueBox <- flexdashboard::renderValueBox(
+  flexdashboard::valueBox(
+    value = paste0("District ", model_dist_id()),
+    caption = " "
+    )
+)
+```
+
+### 
+```{r}
+flexdashboard::valueBoxOutput("rSquaredValueBox")
+```
+
+```{r context="server"}
+# flexdashboard::valueBox(value = model_dist_id())
+
+output$rSquaredValueBox <- flexdashboard::renderValueBox(
+  flexdashboard::valueBox(
+    value = paste0("R2 = "),
+    caption = " "
+    )
+)
+```
+
+
+Row
+------------------------------------------------
+
+### Model Map
+```{r}
+leaflet::leafletOutput("modelBaseMap")
+```
+
+```{r context="server"}
+# Clicking on map 1 outputs Value boxes on both pages + catchment polygons + Dat table + success panel
+# observeEvent(input$districtMapMLR_click, {
+shiny::observeEvent(input$modelBaseMap_shape_click, {
+
+   if(is.null(model_dist_id())) {
+
+     return(NULL)
+
+   } else {
+
+   # # if(!is.null(input$districtMapMLR_click)) {
+   #    click <- input$districtMapMLR_click %>%
+   #      data.frame() %>%
+   #      dplyr::select(lat,lng)
+      # print(click)
+
+          pt <- sf::st_as_sf(
+                    data.frame(
+                      lat = model_map_click()$lat,
+                      lng = model_map_click()$lng
+                      ),
+                    coords = c("lng", "lat"),
+                    crs = 4326
+                    )
+          # 39.7792 -105.7214
+          # 40.66392 -105.4837
+          # 40.69808 -105.6
+          # pt <- sf::st_as_sf(
+          #           data.frame(
+          #             lat = "39.978",
+          #             lng =  "-105.6"
+          #             ),
+          #           coords = c("lng", "lat"),
+          #           crs = 4326
+          #           )
+
+          print(paste0("Subsetting mainstems to HUC4: ",  model_dist_id()))
+
+          print("Subsetting WDIDs to district area...")
+
+          # subset to water district of interest
+          sub_dist <- model_dists[model_dists$DISTRICT == model_dist_id(), ]
+
+
+          # area_nhd <- nhdplusTools::get_nhdplus(
+          #   AOI         = sub_dist,
+          #   realization = c("flowline"),
+          #   streamorder = 5
+          #   )
+
+          # nhdplusTools::navigate_network(
+          #   start = pt,
+          #
+          # )
+
+
+          # sub_pts  <- wr_pts[wr_pts$water_district == dist_id(), ]
+          # sub_dist <- dists[dists$DISTRICT == as.numeric("06"), ]
+          # sub_pts  <- wr_pts[wr_pts$water_district == as.numeric("06"), ]
+
+          print("Updating leaflet map...")
+
+          # dynamically alter leaflet map
+          leaflet::leafletProxy("modelBaseMap") %>%
+              leaflet::clearMarkers() %>%
+              leaflet::clearShapes() %>%
+              leaflet::clearGroup(c("subdist")) %>%
+                # leaflet::removeShape(layerId = levelpathi) %>%
+                leaflet::addPolygons(
+                      data         = model_dists,
+                      fillColor    = 'white',
+                      # fillColor = 'grey',
+                      # fillColor = ~pal_fact(BASIN),
+                      fillOpacity  = 0.7,
+                      col          = "black",
+                      opacity      = 1,
+                      weight       = 2.5,
+                      label        = ~paste0("District: ", DISTRICT),
+                      layerId      = ~DISTRICT,
+                      labelOptions = leaflet::labelOptions(
+                                          noHide = F,
+                                          style  = list(
+                                            "color" = "black",
+                                            "font-weight" = "1000")
+                                        )
+                  ) %>%
+                leaflet::addPolygons(
+                    data         = sub_dist,
+                    fillColor    = '#3EB489',
+                    # fillColor = 'grey',
+                    # fillColor = ~pal_fact(BASIN),
+                    fillOpacity  = 0.5,
+                    col          = "black",
+                    opacity      = 1,
+                    weight       = 3,
+                    group        = "subdist",
+                    label        = ~paste0("District: ", DISTRICT),
+                    layerId      = ~DISTRICT,
+                    labelOptions = leaflet::labelOptions(
+                                        noHide = F,
+                                        style  = list(
+                                          "color" = "black",
+                                          "font-weight" = "1000")
+                                      )
+                )
+            # leaflet::addPolylines(
+            #   data = area_nhd,
+            #   color = "navy",
+            #   opacity = 0.9,
+            #   stroke = TRUE
+            # )
+              # leaflet::addCircleMarkers(
+              #         data        = sub_pts()[sub_pts()$wdid == input$selectWDID, ],
+              #         radius      = 10,
+              #         stroke      = FALSE,
+              #         color       = "red",
+              #         opacity     = 1,
+              #         fillColor   = "red",
+              #         fillOpacity = 0.7
+              #         )
+            # leaflet::addCircleMarkers(
+            #   data = sub_pts$
+            #
+            # )
+              print(paste0("model_dist_id: ", model_dist_id()))
+              
+             shiny::observe({
+                  
+         
+               
+               
+                  # if(is.null(model_dist_id()) & is.null(dist_mod_df())) {
+                  if(is.null(dist_mod_df())) {
+                      print(paste0("dist_mod_df is NULL"))
+
+                       return(NULL)
+             #
+                     } else {
+
+                      lm_out <- make_lm(model_data = dist_mod_df())
+                      # dm <- mod_df %>% dplyr::filter(district == "05")
+                      # lm_out <- make_lm(model_data = dm)
+                
+                      print(paste0("nrow(dist_mod_df()): ", nrow(dist_mod_df())))
+                  
+                      
+                     # render fitted points plot for clicked district
+                     output$fittedPointPlot <- shiny::renderPlot({
+
+                        fitted_plot <- make_fitted_plot(
+                                        df    = lm_out$model_data
+                                        )
+                        fitted_plot
+                        
+                        })
+                    
+                    # Render new R Squared value into value box
+                    output$rSquaredValueBox <- flexdashboard::renderValueBox(
+                                    flexdashboard::valueBox(
+                                      value = paste0("R2 = ", lm_out$r2),
+                                      caption = " "
+                                      )
+                                  )
+                     }
+               
+                  # if(!is.null(input$newDataInputButton)) {
+                  #   print(paste0("new data button clicked: "))
+                  #   print(paste0("input$newDataInput: ", input$newDataInput))
+                  #   
+                  #   pred <- make_prediction(
+                  #     model = lm_out$model,
+                  #     val = as.numeric(input$newDataInput)
+                  #   )
+                  #   print(paste0("prediction value: ", pred$fitted[1]))
+                  #   
+                  # }
+               
+                  shiny::observeEvent(input$newDataInputButton, {
+                    print(paste0("new data button clicked: "))
+                    print(paste0("input$newDataInput: ", input$newDataInput))
+                    
+                    pred <- make_prediction(
+                      model = lm_out$model,
+                      val = as.numeric(input$newDataInput)
+                    )
+                    print(paste0("prediction value: ", pred$fitted[1]))
+                    # lm_out$model_data
+                    
+                    # out %>% dplyr::mutate(
+                    #   district = model_dist_id(),
+                    #   resp_var = "avg_call_year",
+                    #   predictor = "fx",
+                    #   predictor_val = pred$predictor_val,
+                    #   resp_val = "2020",
+                    #   fitted = pred$fitted
+                    # )
+                    
+                    new_out <- dplyr::bind_rows(
+                                            dplyr::mutate(
+                                              lm_out$model_data,
+                                              pt_type = "observed"
+                                              ),
+                                             dplyr::mutate(
+                                               dplyr::tibble(
+                                                  district = model_dist_id(),
+                                                  # district = "1",
+                                                  resp_var = "avg_call_year",
+                                                  predictor = "fx",
+                                                  predictor_val = pred$predictor_val,
+                                                  resp_val = 2020,
+                                                  fitted = pred$fitted
+                                                ),
+                                               pt_type = "added"
+                                             )
+                                          )
+                    # # RERENDER fitted points plot for clicked district
+                    output$fittedPointPlot <- shiny::renderPlot({
+
+                        fitted_plot <- make_updated_fitted_plot(
+                                        df    = new_out
+                                        )
+
+                        fitted_plot 
+                          # ggplot2::geom_point(data = pred, ggplot2::aes(x = predictor_val, y = fitted))
+
+                        })
+                  })
+               
+               
+               })
+             
+    
+             
+             
+             }
+          })
+```
+
+### Observed vs. Predicted
+```{r}
+shiny::plotOutput("fittedPointPlot")
+```
+

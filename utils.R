@@ -215,6 +215,117 @@ dist_basemap <- function(shp) {
   
 }
 
+# Create a linear regression model from a filtered down dataset provided as a dataframe which is then worked into a linear regression 
+# 'model_data' is a dataframe with a 'resp_var', 'resp_val', and 'predictor' column
+make_lm <- function(model_data) {
+  
+  # model_data <- tmp
+  
+  # create linear regression model
+  lm_model <- lm(
+    resp_val ~ predictor_val, 
+    data = model_data
+  )
+  
+  # create a string of the LM equation
+  lm_equation = paste0(model_data$resp_var[1], " ~ ", paste0(unique(model_data$predictor), collapse = "+"))
+  
+  # summarize model
+  lm_summary = summary(lm_model)
+  
+  # extract coefficients
+  lm_coeffs <- janitor::clean_names(lm_summary$coefficients)
+  # janitor::clean_names(lm_summary$coefficients[1, ])
+  # unname(unlist(lm_summary$coefficients[1, ]))
+  
+  # ADD fitted data as column to orginal dataframe
+  model_data <-
+    model_data %>%
+    dplyr::mutate(fitted = lm_model$fitted.values)
+  
+  # return list with fitted model and data
+  res <- list(
+    model      = lm_model,
+    model_data = model_data,
+    equation   = lm_equation,
+    r2         = round(lm_summary$r.squared, 3),
+    coeffs     = lm_coeffs
+  )
+  
+  return(res)
+}
+
+# Make a scatter plot of observed vs predicted values from an Linear regression model 
+# df is a dataframe with containing a "resp_val" column for the observed data, 
+# and a "fitted" column for the fitted values from a linear regression model
+make_fitted_plot <- function(df) {
+  
+  fitted_plot <- 
+    df %>% 
+    ggplot2::ggplot() +
+    ggplot2::geom_point(ggplot2::aes(x = resp_val, y = fitted)) +
+    ggplot2::geom_smooth(ggplot2::aes(x = resp_val, y = fitted), 
+                         method = "lm",
+                         se = FALSE
+    ) + 
+    ggplot2::ylim(c(1800, 2030)) +
+    ggplot2::xlim(c(1800, 2030)) +
+    # ggplot2::scale_x_continuous(
+    #   breaks = seq(1800, 2030, by = 25)
+    #   ) +
+    # ggplot2::scale_y_continuous(
+    #   breaks = seq(1800, 2030, by = 100)
+    #   ) +
+    ggplot2::labs(x = "Observed", y = "Predicted") + 
+    ggplot2::theme_bw() 
+  
+  return(fitted_plot)
+  
+}
+
+# Make a scatter plot of observed vs predicted values from an Linear regression model 
+# df is a dataframe with containing a "resp_val" column for the observed data, 
+# and a "fitted" column for the fitted values from a linear regression model
+make_updated_fitted_plot <- function(df) {
+  
+  fitted_plot <- 
+    df %>% 
+    ggplot2::ggplot() +
+    # ggplot2::geom_point(ggplot2::aes(x = resp_val, y = fitted, color = pt_type)) +
+    ggplot2::geom_point(ggplot2::aes(x = resp_val, y = fitted)) +
+    gghighlight::gghighlight(pt_type == "added") +
+    ggplot2::geom_smooth(ggplot2::aes(x = resp_val, y = fitted), 
+                         method = "lm",
+                         se = FALSE
+    ) + 
+    ggplot2::ylim(c(1800, 2030)) +
+    ggplot2::xlim(c(1800, 2030)) +
+    # ggplot2::scale_x_continuous(
+    #   breaks = seq(1800, 2030, by = 25)
+    #   ) +
+    # ggplot2::scale_y_continuous(
+    #   breaks = seq(1800, 2030, by = 100)
+    #   ) +
+    ggplot2::labs(x = "Observed", y = "Predicted") + 
+    ggplot2::theme_bw() 
+  
+  return(fitted_plot)
+  
+}
+
+make_prediction <- function(model, val) {
+  
+  # put value into a dataframe as 'predictor_val'
+  out <- data.frame(predictor_val = val)
+  
+  # add prediction as 'fitted' column in out 
+  out$fitted <- unname(
+    predict.lm(model, newdata = out)
+  )
+  
+  return(out)
+}
+
 get_us_net <- function(pt, distance) {
   
   # comid_pt <- dataRetrieval::findNLDI(location = pt)
