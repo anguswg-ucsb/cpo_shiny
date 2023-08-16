@@ -16,6 +16,107 @@ library(leafem)
 # Load function data_utils.R file
 source('utils.R')
 
+# ############################################################################
+# ############################################################################
+
+wrs <- readr::read_csv("data/detrended_all_data_final.csv")
+raw <- readr::read_csv("/Users/anguswatters/Downloads/cdss_raw_daily_call_data_combined.csv")
+
+wdid_calls <- aggreg_weekly_wdid(raw)
+wdid_calls$analysis_wdid %>% unique()
+wdid_id <- "0604255"
+
+
+# wdid_calls %>% 
+#   dplyr::mutate(
+#     call_year = lubridate::year(priority_date)
+#   ) %>% 
+#   dplyr::relocate(call_year) %>% 
+#   dplyr::group_by(district, analysis_wdid, year) %>% 
+#   dplyr::summarise(
+#     call_year = mean(call_year, na.rm = T),
+#     year = as.numeric(year)
+#   ) %>% 
+#   dplyr::ungroup() %>% 
+wrs %>% 
+  # dplyr::arrange(district) %>% 
+  dplyr::filter(district == "1")  %>%
+  dplyr::mutate(
+    district = paste0("District: ", district)
+  ) %>% 
+  ggplot2::ggplot() +
+  ggplot2::geom_line(ggplot2::aes(x = year, y = call_year_decimal), size = 2.5) +  
+  # ggplot2::scale_x_continuous(breaks = seq(1970, 2020, by = 15)) +
+  # ggplot2::facet_wrap(~district) +
+  ggplot2::labs(
+    # title = "Annnual average call year",
+    y = "Call year",
+    x = "Year"
+  )  +
+  ggplot2::theme_bw() +
+  ggplot2::theme(
+    plot.title        = ggplot2::element_text(size = 18,
+                                              face = "bold"
+                                              # hjust = 0.5
+                                              ),
+    plot.subtitle     = ggplot2::element_text(size = 14, hjust = 0.5),
+    legend.title      = ggplot2::element_text(size = 18, hjust = 0.5, face = "bold"),
+    legend.text       = ggplot2::element_text(size = 16),
+    # legend.position   = "bottom",
+    
+    axis.title        = ggplot2::element_text(size = 16, face = "bold"),
+    axis.text         = ggplot2::element_text(size = 16),
+    legend.key.width  = unit(1.5, "cm"),
+    legend.text.align = 0,
+    legend.key.height = unit(1, "cm")
+  ) 
+# call_subset <- 
+  # wdid_calls %>% 
+  # dplyr::filter(analysis_wdid == wdid_id)
+  # dplyr::filter(district == "01")
+
+# average call year per year type per district
+make_wdid_rightograph_plot(df = call_subset, wdid = wdid_id, highlight_year = 2002)
+
+call_subset
+
+wdid_calls$analysis_wdid %>% unique()
+weekly_calls$district %>% unique()
+
+
+
+weekly_calls <- aggreg_weekly_district(raw)
+avg_yeartype <-  aggreg_by_year_type(weekly_calls) %>%
+  dplyr::mutate(
+    year_type = dplyr::case_when(
+      year_type == "average" ~ "Average",
+      year_type == "wet" ~ "Wet",
+      year_type == "dry" ~ "Dry"
+    )
+  )
+# saveRDS(weekly_calls, "data/weekly_calls_by_district.rds")
+# saveRDS(avg_yeartype, "data/weekly_calls_by_yeartype.rds")
+
+# subset of districts
+dists      <- sf::read_sf("data/water_districts_subset.gpkg")
+
+avg_yeartype <- readRDS("data/avg_weekly_calls_by_yeartype.rds")
+
+# districts of interest
+doi   = c("01", "05", "08", "64")
+
+# districts for Linear Regression models on Page 2
+model_dists <- 
+  dists %>% 
+  # dplyr::filter(DISTRICT %in% c("1", "5", "8", "64")) %>% 
+  dplyr::filter(DISTRICT %in% as.numeric(doi)) %>% 
+  dplyr::mutate(
+    DISTRICT = ifelse(DISTRICT < 10, paste0("0", DISTRICT), as.character(DISTRICT))
+  )
+
+# ############################################################################
+# ############################################################################
+
 # water districts
 dist <- sf::read_sf("data/water_districts_simple.geojson")
 
