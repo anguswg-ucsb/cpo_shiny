@@ -1,10 +1,10 @@
 ---
-title: "Historial Colorado Water Rights"
-runtime: shiny
+title: "Colorado Water Rights"
 output: 
   flexdashboard::flex_dashboard:
     orientation: rows
     vertical_layout: fill
+runtime: shiny
 ---
 
 ```{r setup, include = FALSE}
@@ -22,34 +22,34 @@ library(DT)
 # Mapping packages
 library(leaflet)
 library(leafem)
-library(shinyjs)
+# library(shinyjs)
 
 # water data
 # library(nhdplusTools)
 # library(cdssr)
 
 # Load function data_utils.R file
-source('utils.R')
+source('final_utils.R')
 # shinyjs::useShinyjs()
 # useShinyjs()
 ```
 
 ```{r context="server"}
 
-shinyjs::useShinyjs(rmd = TRUE)
+# shinyjs::useShinyjs(rmd = TRUE)
 # water rights net amounts spatial data
 
 # wrs <- readr::read_csv("data/detrended_all_data_final.csv")
 # raw <- readr::read_csv("/Users/anguswatters/Downloads/cdss_raw_daily_call_data_combined.csv")
 # weekly_calls <- aggreg_weekly_district(raw)
-# avg_yeartype <-  aggreg_by_year_type(weekly_calls) %>% 
-#     dplyr::mutate(
-#     year_type = dplyr::case_when(
-#                     year_type == "average" ~ "Average",
-#                     year_type == "wet" ~ "Wet",
-#                     year_type == "dry" ~ "Dry"
-#                   )
-#     )
+# avg_yeartype <-  aggreg_by_year_type(weekly_calls) %>%
+# dplyr::mutate(
+# year_type = dplyr::case_when(
+#                 year_type == "average" ~ "Average",
+#                 year_type == "wet" ~ "Wet",
+#                 year_type == "dry" ~ "Dry"
+#               )
+# )
 # saveRDS(weekly_calls, "data/weekly_calls_by_district.rds")
 # saveRDS(avg_yeartype, "data/weekly_calls_by_yeartype.rds")
 # dists      <- sf::read_sf("data/water_districts_simple.geojson") 
@@ -58,60 +58,94 @@ shinyjs::useShinyjs(rmd = TRUE)
 #   dplyr::filter(DISTRICT %in% c(unique(avg_yeartype$district)))
 # sf::write_sf(dists2, "data/water_districts_subset.gpkg")  
 
-# weekly calls data
-weekly_calls <- readRDS("data/weekly_calls_by_district.rds")
+# # weekly calls data
+# weekly_calls <- readRDS("data/weekly_calls_by_district.rds")
 
+# # # average year type average priority date 
+# avg_yeartype <- readRDS("data/weekly_calls_by_yeartype.rds")
+
+# # subset of districts
+# dists      <- sf::read_sf("data/water_districts_subset.gpkg")
+# weekly_calls <- readr::read_csv("data/weekly_calls_by_district.rds")
+# year_types <- readr::read_csv("/Users/anguswatters/Downloads/water_district_yeartype.csv")
+# avg_yeartype$year_type %>% unique()
 # average year type average priority date 
-avg_yeartype <- readRDS("data/weekly_calls_by_yeartype.rds") 
+# avg_yeartype <- 
+#   weekly_calls %>% 
+#   dplyr::select(-year_type) %>% 
+#   dplyr::mutate(
+#     district = ifelse(district < 10, paste0("0", district), as.character(district))
+#     ) %>% 
+#   dplyr::left_join(
+#     dplyr::mutate(
+#       year_types,
+#       district = ifelse(district < 10, paste0("0", district), as.character(district)),
+#       year     = as.character(year)
+#     ),
+#     by = c("district", "year")
+#   ) %>% 
+#   dplyr::rename(year_type = type) %>% 
+#   na.omit() %>% 
+#   aggreg_by_year_type() %>% 
+#   dplyr::mutate(
+#     year_type = dplyr::case_when(
+#                     year_type == "average" ~ "Average",
+#                     year_type == "wet" ~ "Wet",
+#                     year_type == "dry" ~ "Dry"
+#                   )
+#     ) %>% 
+#   dplyr::mutate(district = as.numeric(district))
+# 
+# saveRDS(avg_yeartype, "data/avg_weekly_calls_by_yeartype.rds")
+
+# # weekly calls data
+# weekly_calls <- readRDS("data/weekly_calls_by_district.rds")
+
+# # # average year type average priority date 
+# avg_yeartype <- readRDS("data/weekly_calls_by_yeartype.rds")
+
+water_rights <- readr::read_csv("detrended_all_data_final.csv")
+
+# linear regression lookup table
+lm_lookup <- readr::read_csv("cpo_linear_regression_lookup.csv")
 
 # subset of districts
-dists      <- sf::read_sf("data/water_districts_subset.gpkg")
+dists      <- sf::read_sf("water_districts_subset.gpkg")
+
+avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds")
+
+# districts of interest
+doi   = unique(lm_lookup$district)
 
 # districts for Linear Regression models on Page 2
 model_dists <- 
   dists %>% 
-  dplyr::filter(DISTRICT %in% c("1", "5", "8", "64")) %>% 
-  dplyr::mutate(
-    DISTRICT = ifelse(DISTRICT < 10, paste0("0", DISTRICT), as.character(DISTRICT))
-  )
+  # dplyr::filter(DISTRICT %in% c("1", "5", "8", "64")) %>% 
+    dplyr::filter(DISTRICT %in% as.numeric(doi)) %>% 
+    dplyr::mutate(
+      DISTRICT = ifelse(DISTRICT < 10, paste0("0", DISTRICT), as.character(DISTRICT))
+    )
 
-# temporary dataset of model info for each district
-model_map <- dplyr::tibble(
-              district   = c("01", "05", "08", "64"),
-              resp_var   = c("avg_call_year","avg_call_year", "avg_call_year","avg_call_year"),
-              predictor  = c("swe","fx", "swe","fx")
-            )
+# data used to generate linear regression models
+mod_df <- readRDS("model_data.rds")
 
-# fake test data to simulate models
-mod_df <- dplyr::tibble(
-                district      = rep(model_map$district, each = 20),
-                resp_var      = rep(model_map$resp_var, each = 20),
-                predictor     = rep(model_map$predictor, each = 20),
-                predictor_val = c(
-                  runif(20, min = 0, max = 600),
-                  runif(20, min = 0, max = 250),
-                  runif(20, min = 0, max = 600),
-                  runif(20, min = 0, max = 250)
-                  # seq(0, 600, length.out = 20),
-                  # seq(0, 250, length.out = 20),
-                  # seq(0, 600, length.out = 20),
-                  # seq(0, 250, length.out = 20)
-                ),
-                resp_val = rep(runif(20, min = 1800, max = 2023), 4)
-                # resp_val      = runif(80, min = 1800, max = 2023)
-                # resp_val      = rep(seq(1800, 2023, length.out = 20), 4)
-              )
-# make a list of linear regression models from a dataframe of districts with these columns: 
-#   "district", "resp_var", "resp_val", "predictor", and "predictor_val" columns
-lm_list <- make_lm_list(df = mod_df)
+#  list of linear regression models and metrics
+lm_list <- readRDS("lin_reg_model_list2.rds")
+
+# # make a list of linear regression models from a dataframe of districts with these columns: 
+# #   "district", "resp_var", "resp_val", "predictor", and "predictor_val" columns
+# lm_list <- make_lm_list(df = mod_df)
+# saveRDS(lm_list, "data/lin_reg_model_list.rds")
+
+# lm_list <- readRDS("data/lin_reg_model_list2.rds")
 
 # lm_out <- make_lm(model_data = dist_mod_df())
 
 # base leaflet map on page 1
-output$baseMap       <- renderLeaflet({ dist_basemap(shp = dists) })
+output$baseMap       <- leaflet::renderLeaflet({ dist_basemap(shp = dists) })
 
 # Model base leaflet map on page 2
-output$modelBaseMap       <- renderLeaflet({ dist_basemap(shp = model_dists) })
+output$modelBaseMap       <- leaflet::renderLeaflet({ model_basemap(shp = model_dists) })
 ```
 
 ```{r context="server"}
@@ -137,9 +171,45 @@ dist_id <- shiny::reactive({
    # as.numeric(input$baseMap_shape_click$id)
    input$baseMap_shape_click$id
 })
+
 ```
 
 ```{r context="server"}
+sub_dist1 <- shiny::reactive({
+  # subset to water district of interest
+   # dists[dists$DISTRICT == dist_id(), ]
+  
+    # subset to water district of interest
+    if(is.null(dist_id()) | dist_id() == " ") {
+      
+      return(NULL)
+      
+    } else {
+         dists[dists$DISTRICT == dist_id(), ]
+    }
+  
+})
+```
+
+```{r context="server"}
+sub_dist2 <- shiny::reactive({
+  # subset to water district of interest
+   # model_dists[model_dists$DISTRICT == model_dist_id(), ]
+  
+    # subset to water district of interest
+    if(is.null(model_dist_id()) | model_dist_id() == " ") {
+      
+      return(NULL)
+      
+    } else {
+      model_dists[model_dists$DISTRICT == model_dist_id(), ]
+    }
+  
+})
+```
+
+```{r context="server"}
+# id of clicked district 
 model_dist_id <- shiny::reactive({
    # as.numeric(input$baseMap_shape_click$id)
   if(is.null(input$modelBaseMap_shape_click$id)) {
@@ -149,7 +219,10 @@ model_dist_id <- shiny::reactive({
   }
    # input$modelBaseMap_shape_click$id
 })
+```
 
+```{r context="server"}
+# list ID for lm_list of lin reg models
 list_id <- shiny::reactive({
   
   if(model_dist_id() == " ") {
@@ -167,45 +240,23 @@ list_id <- shiny::reactive({
 ```
 
 ```{r context="server"}
-# current_model_dist_id <- shiny::reactiveVal(NULL)
 
-shiny::observeEvent(model_dist_id(), {
-     # print(paste0("model_dist_id() CHANGED, RESETTING newDataInput AND newDataInputButton: ", model_dist_id()))
-     # 
-     # print(paste0("newDataInput BEFORE reset: ", input$newDataInput))
-     # print(paste0("newDataInputButton BEFORE reset: ", input$newDataInputButton))
-  
-    # Whenever model_dist_id() changes, reset the input value and action button
-    shinyjs::reset("newDataInput")
-    shinyjs::reset("newDataInputButton")
-    
-    output$rSquaredValueBox <- NULL  # clear the R-squared value box
-    output$predictionValueBox <- NULL  # clear the predicted value value box
-    # 
-    # print(paste0("newDataInput AFTER reset: ", input$newDataInput))
-    # print(paste0("newDataInputButton AFTER reset: ", input$newDataInputButton))
-})
-
-# # watch for changes in model_dist_id() and when value changes, reset the text input because it means another district has been selected
-# shiny::observe({
-#   if (!is.null(model_dist_id())) {
-#     # Store the current model_dist_id() in the reactive value
-#     current_model_dist_id(model_dist_id())
-#     
-#     print(paste0(current_model_dist_id()))
-#     
-#     # Clear the text input value and reset the action button
-    # print("RESETTING NEW DATA INPUT VALUE")
-#     shinyjs::reset("newDataInput")
-#     output$rSquaredValueBox <- NULL
-#   }
-# })
+# # watch for changes in model_dist_id(), 
+# shiny::observeEvent(model_dist_id(), {
+#      # print(paste0("model_dist_id() CHANGED, RESETTING newDataInput AND newDataInputButton: ", model_dist_id()))
+#      #
+#      # print(paste0("newDataInput BEFORE reset: ", input$newDataInput))
+#      # print(paste0("newDataInputButton BEFORE reset: ", input$newDataInputButton))
 # 
-# # Reset the Action Button and Value Box:
-# shiny::observe({
-#   if (model_dist_id() != current_model_dist_id()) {
+#     # Whenever model_dist_id() changes, reset the input value and action button
+#     shinyjs::reset("newDataInput")
 #     shinyjs::reset("newDataInputButton")
-#   }
+# 
+#     output$rSquaredValueBox <- NULL  # clear the R-squared value box
+#     output$predictionValueBox <- NULL  # clear the predicted value value box
+#     #
+#     # print(paste0("newDataInput AFTER reset: ", input$newDataInput))
+#     # print(paste0("newDataInputButton AFTER reset: ", input$newDataInputButton))
 # })
 ```
 
@@ -280,19 +331,34 @@ predictor_str <- shiny::reactive({
 })
 ```
 
+```{r context="server"}
+# string containing the predictor for the given district
+predictor_long_str <- shiny::reactive({
+  
+  # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
+  if(is.null(model_data())) {
+    
+    return(NULL)
+    
+  } else {
+    
+    return(model_data()$predictor_long_name[1])
+  }
+})
+```
 
 ```{r context="server"}
 # string containing the predictor for the given district
 predictor_label <- shiny::reactive({
   
   # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
-  if(is.null(predictor_str())) {
+  if(is.null(predictor_long_str())) {
     
     return("Select a district to make a prediction..")
     
   } else {
     
-    return(paste0("Enter ", toupper(predictor_str()), " value..."))
+    return(paste0("Enter ", toupper(predictor_long_str()), " value..."))
     
   }
 })
@@ -304,15 +370,15 @@ predictor_label <- shiny::reactive({
 #        )
 ```
 
-Page 1
-=====================================================
+Right-o-graph
+==========================================
 
 Inputs {.sidebar}
------------------------------------------------------------------------
+---------------------------------------------------------
 ```{r}
 shiny::radioButtons(
   inputId  = "radioYearTypeButtons",
-  label = "Distribution type:",
+  label = "Water year type:",
   choices = c(
     "Dry"    = "Dry",
    "Average" = "Average",
@@ -322,15 +388,16 @@ shiny::radioButtons(
   )
 ```
 
-Row
---------------------------------------------------------
-```{r context="server"}
-# # render district value box at start
-# output$distID <- shiny::renderPrint({
-#   print(dist_id())
-# })
-```
+<br>
 
+- Add text describing how the average weekly call value is displayed and calculated in the bottom plot
+
+- Add text describing wet, dry and average year types here
+
+- ADD POPOVERS/TOOLTIPS TO EACH PANEL AS WELL
+
+Row
+---------------------------------------------------------
 ### Map 1
 ```{r}
 leaflet::leafletOutput("baseMap")
@@ -340,7 +407,7 @@ leaflet::leafletOutput("baseMap")
 # Clicking on map 1 outputs Value boxes on both pages + catchment polygons + Dat table + success panel
 # observeEvent(input$districtMapMLR_click, {
 shiny::observeEvent(input$baseMap_shape_click, {
-
+# shiny::observeEvent(input$baseMap_click, {
    if(is.null(dist_id())) {
 
      return(NULL)
@@ -376,9 +443,9 @@ shiny::observeEvent(input$baseMap_shape_click, {
           print(paste0("Subsetting mainstems to HUC4: ",  dist_id()))
 
           print("Subsetting WDIDs to district area...")
-
-          # subset to water district of interest
-          sub_dist <- dists[dists$DISTRICT == dist_id(), ]
+# 
+#           # subset to water district of interest
+#           sub_dist <- dists[dists$DISTRICT == dist_id(), ]
 
 
           # area_nhd <- nhdplusTools::get_nhdplus(
@@ -403,7 +470,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
           leaflet::leafletProxy("baseMap") %>%
               leaflet::clearMarkers() %>%
               leaflet::clearShapes() %>%
-              leaflet::clearGroup(c("subdist")) %>%
+              leaflet::clearGroup(c("subdist1")) %>%
                 # leaflet::removeShape(layerId = levelpathi) %>%
                 leaflet::addPolygons(
                       data         = dists,
@@ -424,7 +491,8 @@ shiny::observeEvent(input$baseMap_shape_click, {
                                         )
                   ) %>%
                 leaflet::addPolygons(
-                    data         = sub_dist,
+                    # data         = sub_dist,
+                    data = sub_dist1(),
                     fillColor    = '#3EB489',
                     # fillColor = 'grey',
                     # fillColor = ~pal_fact(BASIN),
@@ -432,7 +500,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
                     col          = "black",
                     opacity      = 1,
                     weight       = 3,
-                    group        = "subdist",
+                    group        = "subdist1",
                     label        = ~paste0("District: ", DISTRICT),
                     layerId      = ~DISTRICT,
                     labelOptions = leaflet::labelOptions(
@@ -486,18 +554,18 @@ shiny::observeEvent(input$baseMap_shape_click, {
 ```
 
 Row
-----------------------------------------------
-
-### Map 1
+---------------------------------------------------------
+### call date 1
 ```{r}
 shiny::plotOutput("callDatePlot")
 ```
 
-Page 2
-=====================================================
+Regression models 
+==========================================
+
 Inputs {.sidebar}
------------------------------------------------------------------------
-```{r}
+---------------------------------------------------------
+```{r, context = "server"}
 # ifelse(
 #   is.null(predictor_str()),
 #   "Select a district to make a provide SWE/NRCS Forecast data...",
@@ -521,48 +589,62 @@ shiny::actionButton("newDataInputButton",
 shiny::observeEvent(predictor_label(), {
     shiny::updateTextInput(session, "newDataInput", label = predictor_label())
   })
-
-# shiny::updateTextInput()
-# shiny::actionButton()
-# shiny::radioButtons(
-#   inputId  = "radioYearTypeButtons",
-#   label = "Distribution type:",
-#   choices = c(
-#     "Dry"    = "Dry",
-#    "Average" = "Average",
-#    "Wet"     = "Wet"
-#    ),
-#   selected = "Average"
-#   )
 ```
 
+<br>
+
+- ADD TEXT DESCRIBING MODELING PROCESS AND SPECIFIC VARIABLES USED
+
+- Predictor vs Fitted Values is a plot showing the values used to predict average call year (X axis) and the fitted average call year values (Y axis)
+
+- After clicking on a district, you will be shown the R squared value in the middle value box on the top row, and if you type a SWE or NRCS Forecast value into the input box above and press the "Predict" button, a predicted average call year value will be shown in the top right "Predicted" value box
+
+- ADD POPOVERS/TOOLTIPS TO EACH PANEL AS WELL
+
 Row
-------------------------------------------------
-### 
+---------------------------------------------------------
+### Dist box
 ```{r}
 flexdashboard::valueBoxOutput("districtValueBox")
 ```
 
 ```{r context="server"}
+# {r context="server"}
 # flexdashboard::valueBox(value = model_dist_id())
 # ("primary", "info", "success", "warning", "danger")
 output$districtValueBox <- flexdashboard::renderValueBox(
   flexdashboard::valueBox(
-    value = paste0("District: ", model_dist_id()),
-    color = "skyblue",
+    value = paste0("District: "),
+    color = "primary",
     caption = " "
     )
 )
+
+# Value box server
+shiny::observeEvent(model_dist_id(), {
+# shiny::observeEvent(event_trigger(), {
+      # print("observer4")
+
+      # Public Safety value box server
+      output$districtValueBox <- flexdashboard::renderValueBox(
+        flexdashboard::valueBox(
+          value = paste0("District: ", model_dist_id()),
+          color = "primary",
+          caption = " "
+          )
+        )
+
+})
 ```
 
-### 
+### R box
 ```{r}
 flexdashboard::valueBoxOutput("rSquaredValueBox")
 ```
 
 ```{r context="server"}
-# flexdashboard::valueBox(value = model_dist_id())
-
+# # flexdashboard::valueBox(value = model_dist_id())
+# 
 output$rSquaredValueBox <- flexdashboard::renderValueBox(
   flexdashboard::valueBox(
     value = paste0("R2: "),
@@ -572,14 +654,14 @@ output$rSquaredValueBox <- flexdashboard::renderValueBox(
 )
 ```
 
-### 
+### Predbox
 ```{r}
-# output prediction value box UI
+# # output prediction value box UI
 flexdashboard::valueBoxOutput("predictionValueBox")
 ```
 
 ```{r context="server"}
-# Render the prediction value Value Box
+# # Render the prediction value Value Box
 output$predictionValueBox <- flexdashboard::renderValueBox(
   flexdashboard::valueBox(
     value = paste0("Prediction: "),
@@ -590,29 +672,22 @@ output$predictionValueBox <- flexdashboard::renderValueBox(
 ```
 
 Row
-------------------------------------------------
-
+---------------------------------------------------------
 ### Model Map
 ```{r}
 leaflet::leafletOutput("modelBaseMap")
 ```
 
 ```{r context="server"}
-# Clicking on map 1 outputs Value boxes on both pages + catchment polygons + Dat table + success panel
-# observeEvent(input$districtMapMLR_click, {
+# # Clicking on map 1 outputs Value boxes on both pages + catchment polygons + Dat table + success panel
+# # observeEvent(input$districtMapMLR_click, {
+# shiny::observeEvent(input$modelBaseMap_shape_click, {
 shiny::observeEvent(input$modelBaseMap_shape_click, {
-
    if(is.null(model_dist_id())) {
 
      return(NULL)
 
    } else {
-
-   # # if(!is.null(input$districtMapMLR_click)) {
-   #    click <- input$districtMapMLR_click %>%
-   #      data.frame() %>%
-   #      dplyr::select(lat,lng)
-      # print(click)
 
           pt <- sf::st_as_sf(
                     data.frame(
@@ -627,11 +702,12 @@ shiny::observeEvent(input$modelBaseMap_shape_click, {
           # 40.69808 -105.6
 
           # print(paste0("Subsetting mainstems to HUC4: ",  model_dist_id()))
+          print(paste0("PAGE 1 DISTRICT ---> ", model_dist_id()))
 
           print(paste0("Highlighting district ", model_dist_id(), " based on modelBaseMap polygon CLICK..."))
 
-          # subset to water district of interest
-          sub_dist <- model_dists[model_dists$DISTRICT == model_dist_id(), ]
+          # # subset to water district of interest
+          # sub_dist <- model_dists[model_dists$DISTRICT == model_dist_id(), ]
 
 
           print("Updating leaflet map...")
@@ -640,7 +716,7 @@ shiny::observeEvent(input$modelBaseMap_shape_click, {
           leaflet::leafletProxy("modelBaseMap") %>%
               leaflet::clearMarkers() %>%
               leaflet::clearShapes() %>%
-              leaflet::clearGroup(c("subdist")) %>%
+              leaflet::clearGroup(c("subdist2")) %>%
                 # leaflet::removeShape(layerId = levelpathi) %>%
                 leaflet::addPolygons(
                       data         = model_dists,
@@ -661,7 +737,7 @@ shiny::observeEvent(input$modelBaseMap_shape_click, {
                                         )
                   ) %>%
                 leaflet::addPolygons(
-                    data         = sub_dist,
+                    data         = sub_dist2(),
                     fillColor    = '#3EB489',
                     # fillColor = 'grey',
                     # fillColor = ~pal_fact(BASIN),
@@ -669,7 +745,7 @@ shiny::observeEvent(input$modelBaseMap_shape_click, {
                     col          = "black",
                     opacity      = 1,
                     weight       = 3,
-                    group        = "subdist",
+                    group        = "subdist2",
                     label        = ~paste0("District: ", DISTRICT),
                     layerId      = ~DISTRICT,
                     labelOptions = leaflet::labelOptions(
@@ -679,38 +755,19 @@ shiny::observeEvent(input$modelBaseMap_shape_click, {
                                           "font-weight" = "1000")
                                       )
                 )
-            # leaflet::addPolylines(
-            #   data = area_nhd,
-            #   color = "navy",
-            #   opacity = 0.9,
-            #   stroke = TRUE
-            # )
-              # leaflet::addCircleMarkers(
-              #         data        = sub_pts()[sub_pts()$wdid == input$selectWDID, ],
-              #         radius      = 10,
-              #         stroke      = FALSE,
-              #         color       = "red",
-              #         opacity     = 1,
-              #         fillColor   = "red",
-              #         fillOpacity = 0.7
-              #         )
-            # leaflet::addCircleMarkers(
-            #   data = sub_pts$
-            #
-            # )
-          
+
               print(paste0("===== model_dist_id: ", model_dist_id(), " ====="))
               print(paste0("===== predictor_str(): ", predictor_str(), " ====="))
               print(paste0("===== predictor_label(): ", predictor_label(), " ====="))
               print(paste0("- list_id(): ", list_id()))
-              print(paste0("- class(model_obj()): ", 
+              print(paste0("- class(model_obj()): ",
                            class(model_obj()))
                     )
-              
-               print(paste0("- class(model_data()): ", 
+
+               print(paste0("- class(model_data()): ",
                            class(model_data()))
                      )
-              
+
              shiny::observe({
 
                   # if(is.null(model_dist_id()) & is.null(dist_mod_df())) {
@@ -721,32 +778,21 @@ shiny::observeEvent(input$modelBaseMap_shape_click, {
              #
                      } else {
 
-                      lm_out <- make_lm(model_data = dist_mod_df())
-                      # dm <- mod_df %>% dplyr::filter(district == "05")
-                      # lm_out <- make_lm(model_data = dm)
-
-                      # print(paste0("nrow(dist_mod_df()): ", nrow(dist_mod_df())))
-
-
                      # render fitted points plot for clicked district
                      output$fittedPointPlot <- shiny::renderPlot({
 
-                        # fitted_plot <- make_fitted_plot(
-                        #                 df    = lm_out$model_data
-                        #                 )
-                       # fitted_plot
+                       # make a fitted plot with current model data
                          make_fitted_plot(
-                                        df    = model_data()
+                                        df = model_data()
                                         )
 
                         })
 
                           # render fitted points plot for clicked district
                      output$predictorFitPlot <- shiny::renderPlot({
-                        # make_predictor_fit_plot(df = lm_out$model_data)
-                        # pred_fit_plot <- make_predictor_fit_plot(df    = lm_out$model_data)
-                        # pred_fit_plot
+                        # make a predictor vs fitted values plot
                         make_predictor_fit_plot(df = model_data())
+                          # make_predictor_fit_plot(df = lm_out$model_data)
                         })
 
                     # Render new R Squared value into value box
@@ -759,100 +805,37 @@ shiny::observeEvent(input$modelBaseMap_shape_click, {
                                       )
                                   )
                      }
-               
-                   # # Render new R Squared value into value box
-                   #  output$predictionValueBox <- flexdashboard::renderValueBox(
-                   #                  flexdashboard::valueBox(
-                   #                    # value = paste0("R2: ", lm_out$r2),
-                   #                    value = paste0("Prediction: ", lm_data()$r2),
-                   #                    caption = " "
-                   #                    )
-                   #                )
-                   #   }
 
-                  # if(!is.null(input$newDataInputButton)) {
-                  #   print(paste0("new data button clicked: "))
-                  #   print(paste0("input$newDataInput: ", input$newDataInput))
-                  #
-                  #   pred <- make_prediction(
-                  #     model = lm_out$model,
-                  #     val = as.numeric(input$newDataInput)
-                  #   )
-                  #   print(paste0("prediction value: ", pred$fitted[1]))
-                  #
-                  # }
 
                print(paste0("----> current_district: ", model_dist_id()))
 
-               # # # if "predict" button is clicked and there is a value in the newDataInput text box, make a prediction
-               # shiny::observeEvent(input$newDataInputButton, {
-               # 
-               #        start_district = model_dist_id()
-               # 
-               #        print(paste0("----> start_district: ", start_district))
-               # 
-               #        # if an input has been put into text box
-               #        if (!is.null(input$newDataInput)) {
-               # 
-               #          print(paste0("input$newDataInput: ",input$newDataInput))
-               # 
-               #          # tmp <- "500"
-               # 
-               #          # make a prediction with new data from user input
-               #          pred <- make_prediction(
-               #            model = lm_out$model,
-               #            predictor = lm_out$model_data$predictor[1],
-               #            val   = as.numeric(input$newDataInput)
-               #            # predictor = lm_out$model_data$predictor[1],
-               #            # val   = as.numeric(tmp)
-               #          )
-               # 
-               #          print(paste0("prediction value: ", pred$fitted[1]))
-               # 
-               #          # Update the plot based on the new prediction
-               #          output$predictorFitPlot <- shiny::renderPlot({
-               # 
-               #            make_new_predfit_plot(
-               #              df = lm_out$model_data,
-               #              pred_df = pred
-               #            )
-               #          })
-               #        }
-               #      })
                })
-             
+
              }
           })
-
+# 
 # # # if "predict" button is clicked and there is a value in the newDataInput text box, make a prediction
 shiny::observeEvent(input$newDataInputButton, {
 
-        start_district = model_dist_id()
-
-        print(paste0("----> start_district: ", start_district))
+        # start_district = model_dist_id()
+        # 
+        # print(paste0("----> start_district: ", start_district))
 
         # if an input has been put into text box
         if (!is.null(input$newDataInput)) {
 
           print(paste0("input$newDataInput: ",input$newDataInput))
 
-          # tmp <- "500"
-
           # make a prediction with new data from user input
           pred <- make_prediction(
-            model = model_obj(),
-            # predictor = model_data()$predictor[1],
+            model     = model_obj(),
             predictor = predictor_str(),
-            val   = as.numeric(input$newDataInput)
-            # model = lm_out$model,
-            # predictor = lm_out$model_data$predictor[1],
-            # val   = as.numeric(input$newDataInput)
-            # predictor = lm_out$model_data$predictor[1],
-            # val   = as.numeric(tmp)
+            val       = as.numeric(input$newDataInput)
           )
 
+
           print(paste0("prediction value: ", pred$fitted[1]))
-          
+
           # update the prediction value Value Box
           output$predictionValueBox <- flexdashboard::renderValueBox(
                           flexdashboard::valueBox(
@@ -862,7 +845,7 @@ shiny::observeEvent(input$newDataInputButton, {
                             caption = " "
                             )
                         )
-          
+
           # Update the plot based on the new prediction
           output$predictorFitPlot <- shiny::renderPlot({
 
@@ -877,7 +860,7 @@ shiny::observeEvent(input$newDataInputButton, {
 ```
 
 Row
-------------------------------------------------
+---------------------------------------------------------
 
 ### Predictor vs. Fitted values
 ```{r}

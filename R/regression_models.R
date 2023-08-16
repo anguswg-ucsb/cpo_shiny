@@ -3,6 +3,97 @@ library(ggplot2)
 library(sf)
 library(leaflet)
 
+source("utils.R")
+
+##################################################################################
+##################################################################################
+
+water_rights <- readr::read_csv("data/detrended_all_data_final.csv")
+# water_rights <-
+#   water_rights %>%
+#   dplyr::mutate(
+#     district = ifelse(district < 10, paste0("0", district), as.character(district))
+#   )
+# 
+# water_rights <-
+#   water_rights %>%
+#   dplyr::rename(call_year = call_year_decimal)
+# readr::write_csv(
+#   water_rights,
+#   "data/detrended_all_data_final.csv")
+
+# linear regression lookup table
+lm_lookup <- readr::read_csv("data/cpo_linear_regression_lookup.csv") 
+# lm_lookup <- readr::read_csv("data/cpo_linear_regression_lookup.csv") %>% 
+#   dplyr::select(1:4) %>% 
+  # dplyr::mutate(
+  #   district = ifelse(district < 10, paste0("0", district), as.character(district))
+  # )
+# lm_lookup[lm_lookup$district == "05", ]$predictor_name = "may_swe"
+# lm_lookup[lm_lookup$district == "05", ]$predictor_long_name = "May 1 SWE"
+# readr::write_csv(
+#   lm_lookup,
+#   "data/cpo_linear_regression_lookup.csv"
+# )
+
+udistricts <- unique(lm_lookup$district)
+
+# for(i in 1:length(udistricts)) {
+lm_data <- lapply(1:length(udistricts), function(i) {
+  
+  message("Processing district: ", udistricts[i])
+
+  pred_name <- 
+    lm_lookup %>% 
+    dplyr::filter(district == udistricts[i]) %>% 
+    .$predictor_name
+
+  message("Predictor name: ", pred_name)
+  
+  water_rights %>% 
+    dplyr::filter(district == udistricts[i]) %>% 
+    dplyr::select(year, district, call_year, tidyr::all_of(pred_name)) %>% 
+    tidyr::pivot_longer(
+      cols = c(pred_name),
+      names_to = "predictor",
+      values_to = "predictor_val"
+    ) %>% 
+    tidyr::pivot_longer(
+      cols = c(call_year),
+      names_to = "resp_var",
+      values_to = "resp_val"
+    ) %>% 
+    dplyr::mutate(
+      predictor_long_name = dplyr::filter(lm_lookup, district == udistricts[i])$predictor_long_name
+    ) %>% 
+    dplyr::relocate(year, district, resp_var, resp_val, predictor, predictor_long_name, predictor_val) %>% 
+    na.omit()
+  
+  
+  }) %>% 
+  dplyr::bind_rows()
+
+lm_list <- make_lm_list(lm_data)
+saveRDS(lm_list, "data/lin_reg_model_list2.rds")
+
+saveRDS(
+  lm_data,
+  "data/model_data.rds"
+)
+
+pred_name <- 
+  lm_lookup %>% 
+  dplyr::filter(district == udistricts[i]) %>% 
+  .$predictor_name
+
+water_rights %>% 
+  dplyr::filter(district == udistricts[i]) %>% 
+  dplyr::select(year, district, call_year, tidyr::all_of(pred_name))
+
+
+##################################################################################
+##################################################################################
+
 model_map <- dplyr::tibble(
               district   = c("01", "05", "08", "64"),
               resp_var   = c("avg_call_year","avg_call_year", "avg_call_year","avg_call_year"),
@@ -37,8 +128,8 @@ tmp <-
   dplyr::filter(district == dist_id)
 
 make_lm <- function(model_data) {
-  
-  # model_data <- tmp
+  # lm_data
+  # model_data <- lm_data
   
   # create linear regression model
   lm_model <- lm(
