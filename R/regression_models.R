@@ -8,7 +8,10 @@ source("utils.R")
 ##################################################################################
 ##################################################################################
 
-water_rights <- readr::read_csv("data/detrended_all_data_final.csv")
+# detrended water rights data
+water_rights <- readr::read_csv("detrended_all_data_final_v2.csv")
+# water_rights <- readr::read_csv("detrended_all_data_final.csv")
+
 # water_rights <-
 #   water_rights %>%
 #   dplyr::mutate(
@@ -23,7 +26,7 @@ water_rights <- readr::read_csv("data/detrended_all_data_final.csv")
 #   "data/detrended_all_data_final.csv")
 
 # linear regression lookup table
-lm_lookup <- readr::read_csv("data/cpo_linear_regression_lookup.csv") 
+lm_lookup <- readr::read_csv("cpo_linear_regression_lookup.csv") 
 # lm_lookup <- readr::read_csv("data/cpo_linear_regression_lookup.csv") %>% 
 #   dplyr::select(1:4) %>% 
   # dplyr::mutate(
@@ -74,21 +77,24 @@ lm_data <- lapply(1:length(udistricts), function(i) {
   dplyr::bind_rows()
 
 lm_list <- make_lm_list(lm_data)
+
+# save a list of the models
 saveRDS(lm_list, "data/lin_reg_model_list2.rds")
 
+# save data used for modelling
 saveRDS(
   lm_data,
   "data/model_data.rds"
 )
 
-pred_name <- 
-  lm_lookup %>% 
-  dplyr::filter(district == udistricts[i]) %>% 
-  .$predictor_name
-
-water_rights %>% 
-  dplyr::filter(district == udistricts[i]) %>% 
-  dplyr::select(year, district, call_year, tidyr::all_of(pred_name))
+# pred_name <- 
+#   lm_lookup %>% 
+#   dplyr::filter(district == udistricts[i]) %>% 
+#   .$predictor_name
+# 
+# water_rights %>% 
+#   dplyr::filter(district == udistricts[i]) %>% 
+#   dplyr::select(year, district, call_year, tidyr::all_of(pred_name))
 
 
 ##################################################################################

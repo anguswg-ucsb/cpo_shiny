@@ -18,6 +18,90 @@ source('utils.R')
 
 # ############################################################################
 # ############################################################################
+ # LOAD IN DATA
+water_rights <- readr::read_csv("detrended_all_data_final_v2.csv")
+
+# linear regression lookup table
+lm_lookup <- readr::read_csv("cpo_linear_regression_lookup.csv")
+
+# subset of districts
+dists      <- sf::read_sf("water_districts_subset.gpkg")
+
+avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds")
+
+# districts of interest
+doi   = unique(lm_lookup$district)
+
+# districts for Linear Regression models on Page 2
+model_dists <- 
+  dists %>% 
+  # dplyr::filter(DISTRICT %in% c("1", "5", "8", "64")) %>% 
+  dplyr::filter(DISTRICT %in% as.numeric(doi)) %>% 
+  dplyr::mutate(
+    DISTRICT = ifelse(DISTRICT < 10, paste0("0", DISTRICT), as.character(DISTRICT))
+  )
+
+# data used to generate linear regression models
+mod_df <- readRDS("model_data.rds")
+
+#  list of linear regression models and metrics
+lm_list <- readRDS("lin_reg_model_list2.rds")
+
+# ############################################################################
+# ############################################################################
+
+tmp <- 
+  mod_df %>% 
+  dplyr::filter(district == "01")
+
+
+make_observed_value_plot <- function(df,
+                                     yaxis = NULL
+                                     ) {
+  # tmp <- 
+  #   mod_df %>% 
+  #   dplyr::filter(district == "01")
+  # df <-  tmp
+  
+  # yaxis = NULL
+  # if(is.null(yaxis)) {
+  #   yaxis <- df$predictor_long_name[1]
+  # }
+  yaxis <- df$predictor_long_name[1]
+  
+  
+  observed_plot <-
+    df %>% 
+    ggplot2::ggplot() +
+    ggplot2::geom_point(
+      ggplot2::aes(x = resp_val, y = predictor_val),
+      size = 2
+    ) +
+    ggplot2::geom_smooth(ggplot2::aes(x = resp_val, y = predictor_val), 
+                         method = "lm",
+                         se = FALSE
+    ) + 
+    ggplot2::ylim(c(0, 1000)) +
+    ggplot2::xlim(c(1800, 2030)) +
+    # ggplot2::scale_x_continuous(
+    #   breaks = seq(1800, 2030, by = 25)
+    #   ) +
+    # ggplot2::scale_y_continuous(
+    #   breaks = seq(1800, 2030, by = 100)
+    #   ) +
+    ggplot2::labs(
+      x = "Observed average call year",
+      y = paste0("Observed ", yaxis)
+      ) + 
+    ggplot2::theme_bw() 
+  
+  return(observed_plot)
+  
+
+  }
+
+# ############################################################################
+# ############################################################################
 
 wrs <- readr::read_csv("data/detrended_all_data_final.csv")
 raw <- readr::read_csv("/Users/anguswatters/Downloads/cdss_raw_daily_call_data_combined.csv")

@@ -364,3 +364,110 @@ make_prediction <- function(model, predictor, val) {
   
   return(out)
 }
+
+make_observed_plot <- function(df,
+                               yaxis = NULL
+                               ) {
+  # tmp <- 
+  #   mod_df %>% 
+  #   dplyr::filter(district == "01")
+  # df <-  tmp
+  
+  # yaxis = NULL
+  # if(is.null(yaxis)) {
+  #   yaxis <- df$predictor_long_name[1]
+  # }
+  yaxis <- df$predictor_long_name[1]
+  
+  
+  observed_plot <-
+    df %>% 
+    ggplot2::ggplot() +
+    ggplot2::geom_point(
+      ggplot2::aes(x = resp_val, y = predictor_val),
+      size = 2
+    ) +
+    ggplot2::geom_smooth(ggplot2::aes(x = resp_val, y = predictor_val), 
+                         method = "lm",
+                         se = FALSE
+    ) + 
+    ggplot2::ylim(c(0, 1000)) +
+    ggplot2::xlim(c(1800, 2030)) +
+    # ggplot2::scale_x_continuous(
+    #   breaks = seq(1800, 2030, by = 25)
+    #   ) +
+    # ggplot2::scale_y_continuous(
+    #   breaks = seq(1800, 2030, by = 100)
+    #   ) +
+    ggplot2::labs(
+      x = "Observed average call year",
+      y = paste0("Observed ", yaxis)
+    ) + 
+    ggplot2::theme_bw() 
+  
+  return(observed_plot)
+  
+  
+}
+
+make_new_observed_plot <- function(
+                              df,
+                              pred_df,
+                              yaxis = NULL
+                              ) {
+  # tmp <-
+  #   mod_df %>%
+  #   dplyr::filter(district == "01")
+  # df <-  tmp
+  
+  # yaxis = NULL
+  # if(is.null(yaxis)) {
+  #   yaxis <- df$predictor_long_name[1]
+  # }
+  
+  # mod_obj <- lm_list[["district_03"]]$model
+  yaxis <- df$predictor_long_name[1]
+  # p_str <-  df$predictor[1]
+  # 
+  # pred_df <- make_prediction(
+  #   model     = mod_obj,
+  #   predictor = p_str,
+  #   val       = as.numeric(300)
+  # )
+  
+  new_observed_plot <-
+    df %>% 
+    ggplot2::ggplot() +
+    ggplot2::geom_point(
+      ggplot2::aes(x = resp_val, y = predictor_val),
+      size = 2
+    ) +
+    ggplot2::geom_smooth(ggplot2::aes(x = resp_val, y = predictor_val),
+                           method = "lm",
+                           se = FALSE
+    ) +
+    ggplot2::geom_point(
+      data = pred_df,
+      ggplot2::aes(x = fitted, y = predictor_val),
+      color = "red",
+      size = 5
+    ) +
+    ggplot2::ylim(c(0, 1000)) +
+    ggplot2::xlim(c(1800, 2030)) +
+    # ggplot2::scale_x_continuous(
+    #   breaks = seq(1800, 2030, by = 25)
+    #   ) +
+    # ggplot2::scale_y_continuous(
+    #   breaks = seq(1800, 2030, by = 100)
+    #   ) +
+    ggplot2::labs(
+      x = "Observed average call year",
+      y = paste0("Observed ", yaxis)
+    ) + 
+    ggplot2::theme_bw() 
+  
+  return(new_observed_plot)
+  
+  
+}
+
