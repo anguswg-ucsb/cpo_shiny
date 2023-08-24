@@ -13,8 +13,6 @@ library(shiny)
 library(flexdashboard)
 
 # Data manipulation
-# library(tidyr)
-# library(dplyr)
 library(dplyr)
 library(ggplot2)
 library(DT)
@@ -23,19 +21,13 @@ library(DT)
 library(leaflet)
 library(leafem)
 # library(shinyjs)
-
-# water data
-# library(nhdplusTools)
-# library(cdssr)
+library(shinyBS)
 
 # Load function data_utils.R file
 source('final_utils.R')
-# shinyjs::useShinyjs()
-# useShinyjs()
 ```
 
 ```{r context="server"}
-
 # shinyjs::useShinyjs(rmd = TRUE)
 # water rights net amounts spatial data
 
@@ -421,9 +413,24 @@ shiny::radioButtons(
 
 Row
 ---------------------------------------------------------
-### Map 1
+###
 ```{r}
+# District leaflet map output
 leaflet::leafletOutput("baseMap")
+shinyBS::bsPopover(
+  "baseMap",
+  title     = "Colorado South Platte Water Districts",
+  content   = "Click on a water district to view annual historical call dates for a given week",
+  placement = "bottom",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
 ```
 
 ```{r context="server"}
@@ -570,6 +577,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
                           )
 
                         })
+                     
                        }
                })
              }
@@ -581,6 +589,20 @@ Row
 ###
 ```{r}
 shiny::plotOutput("callDatePlot")
+shinyBS::bsPopover(
+  "callDatePlot",
+  title     = "Annual historic call dates by week",
+  content   = "After clicking on a district on the map above, a lineplot showing the selected district's historic average call date (Y axis) for a given week of the year (X axis). The 3 lines each represent a different average value calculated for across all years for a given year type (dry, average, and wet). Year types were calculated by creating terciles from the annual total streamflow discharge volume at a representative USGS gage for each district.",
+  placement = "left",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
 ```
 
 Regression models 
@@ -649,9 +671,23 @@ shiny::observeEvent(predictor_label(), {
 
 Row
 ---------------------------------------------------------
-### Dist box
+### District
 ```{r}
 flexdashboard::valueBoxOutput("districtValueBox")
+shinyBS::bsPopover(
+  "districtValueBox",
+  title     = "",
+  content   = "Water district",
+  placement = "bottom",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
 ```
 
 ```{r context="server"}
@@ -683,9 +719,23 @@ shiny::observeEvent(model_dist_id(), {
 })
 ```
 
-### R box
+###
 ```{r}
 flexdashboard::valueBoxOutput("rSquaredValueBox")
+shinyBS::bsPopover(
+  "rSquaredValueBox",
+  title     = HTML(paste0("R",tags$sup("2"))),
+  content   = "R-squared is a statistical measure that represents the proportion of the variance for a dependent variable that’s explained by an independent variable in a regression model.",
+  placement = "bottom",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
 ```
 
 ```{r context="server"}
@@ -693,14 +743,15 @@ flexdashboard::valueBoxOutput("rSquaredValueBox")
 # 
 output$rSquaredValueBox <- flexdashboard::renderValueBox(
   flexdashboard::valueBox(
-    value = paste0("R2: "),
+    # value = paste0("R2: "),
+    value =  HTML(paste0("R",tags$sup("2"), ": ")),
     color = "warning",
     caption = " "
     )
 )
 ```
 
-### Predbox
+###
 ```{r}
 # # output prediction value box UI
 flexdashboard::valueBoxOutput("predictionValueBox")
@@ -722,6 +773,20 @@ Row
 ### Model Map
 ```{r}
 leaflet::leafletOutput("modelBaseMap")
+shinyBS::bsPopover(
+  "modelBaseMap",
+  title     = "Colorado South Platte Water Districts",
+  content   = "Use the selection drop down in the left panel to select and highlight a water district on the map",
+  placement = "bottom",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
 ```
 
 ```{r context="server"}
@@ -857,7 +922,8 @@ shiny::observeEvent(model_dist_id(), {
                     output$rSquaredValueBox <- flexdashboard::renderValueBox(
                                     flexdashboard::valueBox(
                                       # value = paste0("R2: ", lm_out$r2),
-                                      value = paste0("R2: ", lm_data()$r2),
+                                      # value = paste0("R2: ", lm_data()$r2),
+                                      value =  HTML(paste0("R",tags$sup("2"), ": " , lm_data()$r2)),
                                       color = "warning",
                                       caption = " "
                                       )
@@ -934,6 +1000,20 @@ Row
 ### Observed response vs. Observed predictors
 ```{r}
 shiny::plotOutput("observedPointPlot")
+shinyBS::bsPopover(
+  "observedPointPlot",
+  title     = "Observed call year vs. Observed predictor variables",
+  content   = "The plot has observed average annual call year on the X axis and the observed predictor variable values for a given district. Providing predictor values to the input box on the left panel and pressing the predict button will generate a predicted average call year value based on the predictor value given. A red dot will be added to the scatter plot indicating the value The models explanitory power is explained through the R2 value displayed on the plot and in the value box above the map.",
+  placement = "top",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
 ```
 
 <!-- ### Predictor vs. Fitted values -->
