@@ -4,8 +4,16 @@ output:
   flexdashboard::flex_dashboard:
     orientation: rows
     vertical_layout: fill
+    logo: www/lynker_logo_white_transparent.png
+    css: www/custom.css
 runtime: shiny
 ---
+
+<style>
+
+.navbar, [data-toggle=tab], .navbar-brand  {   background-color:#1c3a5d;   border-color:black;   color:white; }
+
+</style>
 
 ```{r setup, include = FALSE}
 # Shiny & Flexdashboard packages
@@ -20,6 +28,8 @@ library(DT)
 # Mapping packages
 library(leaflet)
 library(leafem)
+library(terra)
+
 # library(shinyjs)
 library(shinyBS)
 
@@ -102,27 +112,60 @@ water_rights <- readr::read_csv("detrended_all_data_final_v2.csv")
 lm_lookup <- readr::read_csv("cpo_linear_regression_lookup.csv")
 
 # subset of districts
-dists      <- sf::read_sf("water_districts_subset.gpkg")
+# dists      <- sf::read_sf("water_districts_subset.gpkg")
+dists <- sf::read_sf("water_districts_subset2.gpkg")
 
-avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds")
+# catalog entry for getting EDDI data
+cat <- readRDS("eddi_catalog.rds") %>% 
+  update_duration()
+
+new_eddi <- eddi_from_catalog(
+  catalog    = cat,
+  aoi        = dplyr::mutate(dists, 
+                             district = as.integer(district)),
+  varname    = "eddi30d",
+  start_date = Sys.Date() - 365,
+  end_date   = Sys.Date(),
+  name_col   = "district",
+  verbose    = FALSE
+  )
+
+
+# all_dists   <- sf::read_sf("water_districts_simple.geojson") %>%
+#   dplyr::filter(DISTRICT  %in% c(1, 2, 3,  4, 5, 6,7, 8, 9, 23, 80, 64)) %>%
+#   janitor::clean_names() %>%
+#   dplyr::mutate(
+#       district = ifelse(district < 10, paste0("0", district), as.character(district))
+#     ) %>% 
+#   sf::st_transform(4326) %>%
+#   sf::st_cast("MULTIPOLYGON")
+# sf::write_sf(all_dists, "water_districts_subset2.gpkg")
+
+avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds") %>% 
+  dplyr::mutate(
+      district = ifelse(district < 10, paste0("0", district), as.character(district))
+    )
 
 # districts of interest
 doi   = unique(lm_lookup$district)
 
 # districts for Linear Regression models on Page 2
-model_dists <- 
-  dists %>% 
-  # dplyr::filter(DISTRICT %in% c("1", "5", "8", "64")) %>% 
-    dplyr::filter(DISTRICT %in% as.numeric(doi)) %>% 
-    dplyr::mutate(
-      DISTRICT = ifelse(DISTRICT < 10, paste0("0", DISTRICT), as.character(DISTRICT))
-    )
+model_dists <-  dists
+# model_dists <- 
+#   dists %>% 
+#   # dplyr::filter(DISTRICT %in% c("1", "5", "8", "64")) %>% 
+#     dplyr::filter(DISTRICT %in% as.numeric(doi)) %>% 
+#     dplyr::mutate(
+#       DISTRICT = ifelse(DISTRICT < 10, paste0("0", DISTRICT), as.character(DISTRICT))
+#     )
 
 # data used to generate linear regression models
-mod_df <- readRDS("model_data.rds")
+# mod_df <- readRDS("model_data.rds")
+mod_df <- readRDS("mlr_model_data.rds")
 
 #  list of linear regression models and metrics
-lm_list <- readRDS("lin_reg_model_list2.rds")
+lm_list <- readRDS("mlr_model_list.rds")
+# lm_list <- readRDS("lin_reg_model_list2.rds")
 
 # # make a list of linear regression models from a dataframe of districts with these columns: 
 # #   "district", "resp_var", "resp_val", "predictor", and "predictor_val" columns
@@ -177,7 +220,7 @@ sub_dist1 <- shiny::reactive({
       return(NULL)
       
     } else {
-         dists[dists$DISTRICT == dist_id(), ]
+         dists[dists$district == dist_id(), ]
     }
   
 })
@@ -212,7 +255,7 @@ sub_dist2 <- shiny::reactive({
       return(NULL)
 
     } else {
-      model_dists[model_dists$DISTRICT == model_dist_id(), ]
+      model_dists[model_dists$district == model_dist_id(), ]
     }
 
 })
@@ -295,6 +338,27 @@ dist_mod_df <- shiny::reactive({
 ```
 
 ```{r context="server"}
+eddi_df <- shiny::reactive({
+  new_eddi %>% 
+    dplyr::filter(district == model_dist_id())
+    # dplyr::filter(district == dist_id(), 
+    #               year_type == input$radioYearTypeButtons)
+})
+```
+
+```{r context="server"}
+eddi_val <- shiny::reactive({
+    dplyr::filter(new_eddi, district == model_dist_id())$may_eddi30d 
+    # dplyr::filter(new_eddi, district == "01")$may_eddi30d 
+
+  # new_eddi %>% 
+  #   dplyr::filter(district == model_dist_id())
+    # dplyr::filter(district == dist_id(), 
+    #               year_type == input$radioYearTypeButtons)
+})
+```
+
+```{r context="server"}
 lm_data <- shiny::reactive({
   
   # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
@@ -332,6 +396,38 @@ model_obj <- shiny::reactive({
 
 ```{r context="server"}
 # string containing the predictor for the given district
+predictor_str1 <- shiny::reactive({
+  
+  # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
+  if(is.null(model_data())) {
+    
+    return(NULL)
+    
+  } else {
+    
+    return(model_data()$predictor1[1])
+  }
+})
+```
+
+```{r context="server"}
+# string containing the predictor for the given district
+predictor_str2 <- shiny::reactive({
+  
+  # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
+  if(is.null(model_data())) {
+    
+    return(NULL)
+    
+  } else {
+    
+    return(model_data()$predictor2[1])
+  }
+})
+```
+
+```{r context="server"}
+# string containing the predictor for the given district
 predictor_str <- shiny::reactive({
   
   # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
@@ -358,6 +454,22 @@ predictor_long_str <- shiny::reactive({
   } else {
     
     return(model_data()$predictor_long_name[1])
+  }
+})
+```
+
+```{r context="server"}
+# string containing the predictor for the given district
+predictor_long_str2 <- shiny::reactive({
+  
+  # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
+  if(is.null(model_data())) {
+    
+    return(NULL)
+    
+  } else {
+    
+    return(model_data()$predictor_long_name2[1])
   }
 })
 ```
@@ -511,8 +623,8 @@ shiny::observeEvent(input$baseMap_shape_click, {
                       col          = "black",
                       opacity      = 1,
                       weight       = 2.5,
-                      label        = ~paste0("District: ", DISTRICT),
-                      layerId      = ~DISTRICT,
+                      label        = ~paste0("District: ", district),
+                      layerId      = ~district,
                       labelOptions = leaflet::labelOptions(
                                           noHide = F,
                                           style  = list(
@@ -531,8 +643,8 @@ shiny::observeEvent(input$baseMap_shape_click, {
                     opacity      = 1,
                     weight       = 3,
                     group        = "subdist1",
-                    label        = ~paste0("District: ", DISTRICT),
-                    layerId      = ~DISTRICT,
+                    label        = ~paste0("District: ", district),
+                    layerId      = ~district,
                     labelOptions = leaflet::labelOptions(
                                         noHide = F,
                                         style  = list(
@@ -633,6 +745,7 @@ shiny::selectInput(
               "6" = "06",
               "7" = "07",
               "8" = "08",
+              "9" = "09",
               "23" = "23",
               "64" = "64",
               "80" = "80"
@@ -717,6 +830,23 @@ shiny::observeEvent(model_dist_id(), {
         )
 
 })
+```
+
+###
+```{r}
+# # output prediction value box UI
+flexdashboard::valueBoxOutput("eddiValueBox")
+```
+
+```{r context="server"}
+# # Render the prediction value Value Box
+output$eddiValueBox <- flexdashboard::renderValueBox(
+  flexdashboard::valueBox(
+    value = paste0("EDDI: ", round(eddi_val(), 2)),
+    color = "danger",
+    caption = " "
+    )
+)
 ```
 
 ###
@@ -839,8 +969,8 @@ shiny::observeEvent(model_dist_id(), {
                       col          = "black",
                       opacity      = 1,
                       weight       = 2.5,
-                      label        = ~paste0("District: ", DISTRICT),
-                      layerId      = ~DISTRICT,
+                      label        = ~paste0("District: ", district),
+                      layerId      = ~district,
                       labelOptions = leaflet::labelOptions(
                                           noHide = F,
                                           style  = list(
@@ -859,8 +989,8 @@ shiny::observeEvent(model_dist_id(), {
                     opacity      = 1,
                     weight       = 3,
                     group        = "subdist2",
-                    label        = ~paste0("District: ", DISTRICT),
-                    layerId      = ~DISTRICT,
+                    label        = ~paste0("district: ", district),
+                    layerId      = ~district,
                     labelOptions = leaflet::labelOptions(
                                         noHide = F,
                                         style  = list(
@@ -910,11 +1040,59 @@ shiny::observeEvent(model_dist_id(), {
                      
                      # render observed resposne vs observed predictors points plot for selected district
                      output$observedPointPlot <- shiny::renderPlot({
-                        # make a predictor vs fitted values plot
-                        make_observed_plot(
-                          df    = model_data(),
-                          yaxis = NULL
+                        # # make a predictor vs fitted values plot
+                        # make_observed_plot(
+                        #   df    = model_data(),
+                        #   yaxis = NULL
+                        #   )
+                        # 
+                          # make a predictor vs fitted values plot
+                        make_observed_plot2(
+                          df       = model_data(),
+                          pred_col = "predictor_val1",
+                          yaxis    = predictor_long_str(),
+                          ylim     = c(0, 1000)
                           )
+                      #  make_observed_plot2(
+                      #       df = df, 
+                      #       pred_col = "predictor_val1",
+                      #       yaxis = df$predictor_long_name[1],
+                      #       ylim = c(0, 1000)
+                      #     )
+                      # 
+                      # make_observed_plot2(
+                      #   df = df, 
+                      #   pred_col = "predictor_val2",
+                      #   yaxis = df$predictor_long_name2[1],
+                      #   ylim = c(-4, 4)
+                      # )
+                       
+                          # make_predictor_fit_plot(df = lm_out$model_data)
+                        })
+                     
+                               # render observed resposne vs observed predictors points plot for selected district
+                     output$observedEDDIPointPlot <- shiny::renderPlot({
+                        # make a predictor vs fitted values plot
+                        make_observed_plot2(
+                          df       = model_data(),
+                          pred_col = "predictor_val2",
+                          yaxis    = predictor_long_str2(),
+                          ylim     = c(-4, 4)
+                          )
+                      #  make_observed_plot2(
+                      #       df = df, 
+                      #       pred_col = "predictor_val1",
+                      #       yaxis = df$predictor_long_name[1],
+                      #       ylim = c(0, 1000)
+                      #     )
+                      # 
+                      # make_observed_plot2(
+                      #   df = df, 
+                      #   pred_col = "predictor_val2",
+                      #   yaxis = df$predictor_long_name2[1],
+                      #   ylim = c(-4, 4)
+                      # )
+                       
                           # make_predictor_fit_plot(df = lm_out$model_data)
                         })
 
@@ -923,7 +1101,7 @@ shiny::observeEvent(model_dist_id(), {
                                     flexdashboard::valueBox(
                                       # value = paste0("R2: ", lm_out$r2),
                                       # value = paste0("R2: ", lm_data()$r2),
-                                      value =  HTML(paste0("R",tags$sup("2"), ": " , lm_data()$r2)),
+                                      value =  HTML(paste0("R",tags$sup("2"), ": " , round(lm_data()$r2, 2))),
                                       color = "warning",
                                       caption = " "
                                       )
@@ -950,11 +1128,20 @@ shiny::observeEvent(input$newDataInputButton, {
 
           print(paste0("input$newDataInput: ",input$newDataInput))
 
-          # make a prediction with new data from user input
-          pred <- make_prediction(
+          # # make a prediction with new data from user input
+          # pred <- make_prediction(
+          #   model     = model_obj(),
+          #   predictor = predictor_str(),
+          #   val       = as.numeric(input$newDataInput)
+          # )
+          
+                 # make a prediction with new data from user input
+          pred <- make_mlr_prediction(
             model     = model_obj(),
-            predictor = predictor_str(),
-            val       = as.numeric(input$newDataInput)
+            pred1 = predictor_str1(),
+            pred2 = predictor_str2(),
+            val1       = as.numeric(input$newDataInput),
+            val2  = eddi_val()
           )
 
 
@@ -964,7 +1151,7 @@ shiny::observeEvent(input$newDataInputButton, {
           output$predictionValueBox <- flexdashboard::renderValueBox(
                           flexdashboard::valueBox(
                             # value = paste0("R2: ", lm_out$r2),
-                            value = paste0("Prediction: ", round(pred$fitted, 2)),
+                            value = paste0("Prediction: ", round(pred$fitted, 0)),
                             color = "success",
                             caption = " "
                             )
@@ -980,15 +1167,49 @@ shiny::observeEvent(input$newDataInputButton, {
           #     )
           #   
           # })
-          
+        
+# lm_list[["district_01"]]$model
+# predictor lm_list[["district_01"]]$model_data$predictor_long_name[1]
+#               pred <- make_prediction(
+#                    model     = lm_list[["district_01"]]$model,
+#             predictor = lm_list[["district_01"]]$model_data$predictor_long_name[1],
+#             val       = as.numeric(200))
+#           df = lm_list[["district_01"]]$model_data
+# #           
                  # Update the plot based on the new prediction
           output$observedPointPlot <- shiny::renderPlot({
             
-              make_new_observed_plot(
+              # make_new_observed_plot(
+              #   df      = model_data(),
+              #   pred_df = pred,
+              #   yaxis   = NULL
+              # )
+            
+            make_new_observed_plot2(
                 df      = model_data(),
+                pred_col = "predictor_val1",
                 pred_df = pred,
-                yaxis   = NULL
-              )
+                yaxis = predictor_long_str(),
+                ylim = c(0, 1000)
+            )
+
+          })
+          
+          output$observedEDDIPointPlot <- shiny::renderPlot({
+            
+              # make_new_observed_plot(
+              #   df      = model_data(),
+              #   pred_df = pred,
+              #   yaxis   = NULL
+              # )
+            
+            make_new_observed_plot2(
+                df      = model_data(),
+                pred_col = "predictor_val2",
+                pred_df = pred,
+                yaxis = predictor_long_str2(),
+                ylim = c(-4, 4)
+            )
 
           })
         }
@@ -997,6 +1218,25 @@ shiny::observeEvent(input$newDataInputButton, {
 
 Row
 ---------------------------------------------------------
+### Observed EDDI
+```{r}
+shiny::plotOutput("observedEDDIPointPlot")
+shinyBS::bsPopover(
+  "observedPointPlot",
+  title     = "Observed call year vs. Observed May 1 EDDI 30 day",
+  content   = "",
+  placement = "top",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
+```
+
 ### Observed response vs. Observed predictors
 ```{r}
 shiny::plotOutput("observedPointPlot")
