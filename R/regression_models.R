@@ -100,20 +100,24 @@ saveRDS(
 ##################################################################################
 
 # linear regression lookup table
-lm_lookup <- readr::read_csv("cpo_linear_regression_lookup.csv") 
-
-lm_lookup <- 
-  lm_lookup %>%
-  dplyr::mutate(
-    predictor_name2 = "may_eddi30d",
-    predictor_long_name2 = "May 1 EDDI 30 day "
-  )
+lm_lookup <- readr::read_csv("cpo_linear_regression_lookup_v2.csv")
+# lm_lookup <- readr::read_csv("cpo_linear_regression_lookup_v2.csv") %>% 
+#     dplyr::mutate(district = gsub('"', "", district))
+# readr::write_csv(lm_lookup, "cpo_linear_regression_lookup_v2.csv")
+# lm_lookup <- readr::read_csv("cpo_linear_regression_lookup.csv") 
+# 
+# lm_lookup <-
+#   lm_lookup %>%
+#   dplyr::mutate(
+#     predictor_name2 = "may_eddi30d",
+#     predictor_long_name2 = "May 1 EDDI 30 day"
+#   )
 
 udistricts <- unique(lm_lookup$district)
 
 # for(i in 1:length(udistricts)) {
 mlr_data <- lapply(1:length(udistricts), function(i) {
-  # i = 1
+  # i = 5
   message("Processing district: ", udistricts[i])
   
   pred_name1 <- 
@@ -190,15 +194,25 @@ mlr_data <- lapply(1:length(udistricts), function(i) {
 
 # lm_data %>% dplyr::distinct()
 
+# make multiple linear regression models for dashboard
 mlr_list <- make_mlr_list(mlr_data)
 
+# mlr_list$district_01$r2
+# names(mlr_list)
+# rsquared <- lapply(1:length(mlr_list), function(i) {
+#   mlr_list[[i]]$r2
+# }) %>% 
+#   stats::setNames(names(mlr_list))
+
 # save a list of the models
-saveRDS(mlr_list, "data/mlr_model_list.rds")
+saveRDS(mlr_list, "mlr_model_list2.rds")
+# saveRDS(mlr_list, "data/mlr_model_list.rds")
 
 # save data used for modelling
 saveRDS(
   mlr_data,
-  "data/mlr_model_data.rds"
+  "mlr_model_data2.rds"
+  # "data/mlr_model_data.rds"
 )
 
 # pred_name <- 

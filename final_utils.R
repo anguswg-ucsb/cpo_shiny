@@ -1,3 +1,33 @@
+# library(gt)
+# #Example data
+# data <- data.frame(x1 = c(1, 2, 3, 4, 5),
+#                    x2 = c(2, 4, 5, 7, 8),
+#                    y = c(10, 20, 25, 30, 35))
+# 
+# # Fit a linear regression model
+# model <- lm(y ~ x1 + x2, data = data)
+# 
+# # Create a data frame to store the results
+# results <- data.frame(
+#   R_squared = summary(model)$r.squared,
+#   x1_value = 3,  # Example input value for x1
+#   x2_value = 6,  # Example input value for x2
+#   predicted_output = predict(model, newdata = data.frame(x1 = 3, x2 = 6))
+# )
+# 
+# # Create the gt table
+# table <- results %>%
+#   gt() %>%
+#   tab_header(title = "Multiple Linear Regression Results") %>%
+#   cols_label(
+#     R_squared = "R squared",
+#     x1_value = "Input for x1",
+#     x2_value = "Input for x2",
+#     predicted_output = "Predicted Output"
+#   )
+# 
+# # Print the table
+# print(table)
 
 # leaflet basemap w/ HUC4 shape
 model_basemap <- function(shp) {
@@ -63,22 +93,350 @@ dist_basemap <- function(shp) {
   
 }
 
+# district <- "06"
+# pred1 = "may_swe"
+# pred2 <- "may_eddi1y"
+# 
+# mod_obj <- lm_list$district_06$model
+# mod_data <- lm_list$district_06$model_data
+# mod_eq <- lm_list$district_06$equation
+# 
+# val1 <- 200
+# val2 <- -1
+# 
+# pred <- make_mlr_prediction(
+#   model     = mod_obj,
+#   pred1 = pred1,
+#   pred2 = pred2,
+#   val1  = val1,
+#   val2  = val2
+# )
+# 
+# pred$equation <- mod_eq
+# # long1 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name
+# # long2 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name2
+# 
+# model_tbl <- 
+#   dplyr::bind_cols(
+#     dplyr::filter(lm_lookup, district == model_dist_id()),
+#     pred
+#   )
+# 
+# df_tbl <- dplyr::tibble(
+#   col1 = c(model_tbl$predictor_long_name,
+#            model_tbl$predictor_long_name2,
+#            "Prediction",
+#            "Equation", 
+#            "R2"
+#   ),
+#   col2 = c(
+#     model_tbl$predictor_val1,
+#     predictor_val2, 
+#     model_tbl$predictor_val2, 
+#     model_tbl$equation, 
+#     rsquared
+#   ),
+#   row_name = c("-", "-", "-", "-", "-"),
+#   group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
+# )
+# 
+# df_tbl %>% 
+#   gt(rowname_col = "row_name", groupname_col = "group") %>% 
+#   tab_header(
+#     # title = md("**My Table Title**")
+#     title = md(paste0(district_name)),
+#     subtitle = md(paste0("**District: ", district_num, "**"))
+#     # title = md(paste0("**District: ", district_num, "**")),
+#     # subtitle = md(paste0(district_name))
+#   ) %>%
+#   tab_style(
+#     style = list(
+#       cell_text(color = "white")  # Change the color to your preferred color
+#     ),
+#     locations = cells_column_labels()
+#   ) %>%
+#   tab_style(
+#     style = cell_text(weight = "bold"),
+#     # locations = cells_column_labels(columns = "group")
+#     # locations = cells_body(columns = group)
+#     locations = cells_row_groups()
+#   )
+# 
+# library(gt)
+# lm_list$district_06$equation
+# 
+# district_name <- model_tbl$district_name
+# district_num <- model_tbl$district
+# 
+# predictor_name1 <- model_tbl$predictor_long_name
+# predictor_name2 <- model_tbl$predictor_long_name2
+# 
+# predictor_val1 <- model_tbl$predictor_val1
+# predictor_val2 <- model_tbl$predictor_val2
+# 
+# rsquared_str <- "R2"
+# rsquared <- as.character(round(lm_list$district_06$r2, 2))
+# 
+# prediction_str <- "Prediction"
+# prediction_val <- as.character(round(model_tbl$fitted, 0))
+# 
+# equation_str <- "Equation"
+# model_eq <- paste0("Call year ~ ", predictor_name1, " + ", predictor_name2)
+# 
+# df_tbl <- dplyr::tibble(
+#   col1 = c(model_tbl$predictor_long_name,
+#            model_tbl$predictor_long_name2,
+#            prediction_str,
+#            rsquared_str),
+#   col2 = c(predictor_val1, predictor_val2, prediction_val, rsquared)
+# )
+# library(sjPlot)
+# 
+# df_tbl <- dplyr::tibble(
+#   col1 = c(model_tbl$predictor_long_name,
+#            model_tbl$predictor_long_name2,
+#            "Prediction",
+#            "Equation", 
+#            "R2"
+#            ),
+#   col2 = c(
+#     model_tbl$predictor_val1,
+#     predictor_val2, 
+#     model_tbl$predictor_val2, 
+#     model_tbl$equation, 
+#     rsquared
+#     ),
+#   row_name = c("-", "-", "-", "-", "-"),
+#   group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
+# )
+# md(paste0("District: ", district_num))
+# 
+# paste0(district_name)
+# df_tbl %>% 
+#   gt(rowname_col = "row_name", groupname_col = "group") %>% 
+#   tab_header(
+#     # title = md("**My Table Title**")
+#     title = md(paste0(district_name)),
+#     subtitle = md(paste0("**District: ", district_num, "**"))
+#     # title = md(paste0("**District: ", district_num, "**")),
+#     # subtitle = md(paste0(district_name))
+#   ) %>%
+#   tab_style(
+#     style = list(
+#       cell_text(color = "white")  # Change the color to your preferred color
+#     ),
+#     locations = cells_column_labels()
+#   ) %>%
+#   tab_style(
+#     style = cell_text(weight = "bold"),
+#     # locations = cells_column_labels(columns = "group")
+#     # locations = cells_body(columns = group)
+#     locations = cells_row_groups()
+#   )
+# 
+# cells_row_groups()
+# 
+# exibble %>% gt()
+# exibble %>% 
+# select(-c(fctr, date, time, datetime)) %>% 
+#   gt(rowname_col = "row", groupname_col = "group") %>% 
+#   sub_missing()
+# exibble |> gt()
+# district <- "06"
+# pred1 = "may_swe"
+# pred2 <- "may_eddi1y"
+# 
+# mod_obj <- lm_list$district_06$model
+# mod_data <- lm_list$district_06$model_data
+# mod_eq <- lm_list$district_06$equation
+# 
+# val1 <- 200
+# val2 <- -1
+# 
+# pred <- make_mlr_prediction(
+#   model     = mod_obj,
+#   pred1 = pred1,
+#   pred2 = pred2,
+#   val1  = val1,
+#   val2  = val2
+# )
+# 
+# pred$equation <- mod_eq
+# # long1 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name
+# # long2 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name2
+# 
+# model_tbl <- 
+#   dplyr::bind_cols(
+#     dplyr::filter(lm_lookup, district == "06"),
+#     pred
+#   )
+# 
+# library(flextable)
+# flextable::flextable(model_tbl)
+# names(model_tbl)
+# 
+# district_name <- model_tbl$district_name
+# district_num <- model_tbl$district
+# 
+# predictor_name1 <- model_tbl$predictor_long_name
+# predictor_name2 <- model_tbl$predictor_long_name2
+# 
+# predictor_val1 <- model_tbl$predictor_val1
+# predictor_val2 <- model_tbl$predictor_val2
+# 
+# rsquared_str <- "R2"
+# rsquared <- as.character(round(lm_list$district_06$r2, 2))
+# 
+# prediction_str <- "Prediction"
+# prediction_val <- as.character(round(model_tbl$fitted, 0))
+# 
+# 
+# df_tbl <- dplyr::tibble(
+#   col1 = c(predictor_name1, predictor_name2,prediction_str, rsquared_str),
+#   col2 = c(predictor_val1, predictor_val2, prediction_val, rsquared)
+# )
+# tbl <- flextable::flextable(df_tbl)
+# tbl
+# pars <- as_paragraph(
+#   as_chunk(c("District:", "District name:")), " ",
+#   as_chunk(c(district_num,
+#              district_name)
+#   )
+# )
+# add_header_row(tbl, values = pars, top = FALSE)
+# 
+# ft_1 <- add_header_row(tbl, values = pars,
+#                        colwidths = c(5, 6), top = FALSE)
+# new_row <- list(
+#   District =district_num,
+#   "District name" = district_name
+# )
+# ft_1 <- flextable::add_header(tbl, values = new_row, top = FALSE)
+# tbl <- flextable::flextable(df_tbl)
+# flextable::add_header()
+# fun <- function(x) {
+#   paste0(
+#     c("min: ", "max: "),
+#     formatC(range(x))
+#   )
+# }
+# new_row <- list(
+#   District =district_num,
+#   "District name" = district_name
+# )
+# flextable::add_header_row()
+# new_row <- list(
+#   Sepal.Length = fun(iris$Sepal.Length),
+#   Sepal.Width =  fun(iris$Sepal.Width),
+#   Petal.Width =  fun(iris$Petal.Width),
+#   Petal.Length = fun(iris$Petal.Length)
+# )
+# ft01 <- fp_text_default(color = "red")
+# ft02 <- fp_text_default(color = "orange")
+# 
+# pars <- as_paragraph(
+#   as_chunk(c("District:", "District name:")), " ",
+#   as_chunk(c(district_num,
+#              district_name)
+#   )
+# )
+# 
+# ft_1 <- flextable(head(mtcars))
+# ft_1 <- add_header_row(ft_1, values = pars,
+#                        colwidths = c(5, 6), top = FALSE)
+# 
+# ft_1 <- flextable(data = head(iris))
+# ft_1 <- add_header(ft_1, values = new_row, top = FALSE)
+# ft_1 <- append_chunks(ft_1, part = "header", i = 2, )
+# ft_1 <- theme_booktabs(ft_1, bold_header = TRUE)
+# ft_1 <- align(ft_1, align = "center", part = "all")
+# ft_1
+# tbl
+# flextable::add_body_row()
+# tbl <- add_header_lines(tbl, "Predictor Variables and Values")
+# # Simulated data for demonstration
+# ft01 <- fp_text_default(color = "red")
+# ft02 <- fp_text_default(color = "orange")
+# 
+# pars <- as_paragraph(
+#   as_chunk(c("(1)", "(2)"), props = ft02), " ",
+#   as_chunk(
+#     c(
+#       "My tailor is rich",
+#       "My baker is rich"
+#     ),
+#     props = ft01
+#   )
+# )
+# 
+# ft_1 <- flextable(head(mtcars))
+# 
+# ft_1
+# ft_1 <- add_body_row(ft_1,
+#                      values = pars,
+#                      colwidths = c(5, 6), top = FALSE
+# )
+# ft_1
+# ft_1 <- add_body_row(ft_1,
+#                      values = pars,
+#                      colwidths = c(3, 8), top = TRUE
+# )
+# ft_1 <- theme_box(ft_1)
+# ft_1
+# library(flextable)
+# # Simulated data for demonstration
+# set.seed(123)
+# data1 <- data.frame(
+#   Variable = c("A", "B", "C"),
+#   Value = c(10, 20, 30)
+# )
+# 
+# data2 <- data.frame(
+#   Category = c("X", "Y", "Z"),
+#   Score = c(85, 92, 78)
+# )
+# rm(tbl1)
+# # Create the first flextable
+# tbl1 <- flextable(df_tbl)
+# 
+# # Set title for the first table
+# tbl1 <- set_flextable_defaults(
+#   font.size = 12
+# )(tbl1)
+# 
+# # Create the second flextable
+# tbl2 <- flextable(data2)
+# 
+# # Set title for the second table
+# tbl2 <- set_flextable_defaults(
+#   font.size = 12
+# )(tbl2)
 
 make_avg_yeartype_rightograph_plot <- function(df, type) {
   
   # df <- weekly_calls
   # yeartype = "average"
   # dist = 1
-  # avg_yeartype
-  # df <- 
-  #   # weekly_calls %>% 
-  #   avg_yeartype %>% 
+  
+  # df <-
+  #   avg_yeartype %>%
   #   dplyr::filter(
-  #     district == dist
+  #     district == "01"
   #   )
+  # df$label <- NA
+  # df <-
+  #   df %>%
+  #   dplyr::group_by(year_type) %>%
+  #   dplyr::mutate(
+  #     label = dplyr::case_when(
+  #       week == max(week) ~ year_type,
+  #       TRUE              ~ NA
+  #     )
+  #   )
+
   # type = "dry"
   district_lab = unique(df$district)
-  
+
   rightograph <-
     df %>% 
     # dplyr::filter(year == 2022) %>%
@@ -99,18 +457,33 @@ make_avg_yeartype_rightograph_plot <- function(df, type) {
       year_type %in% c(type),
       unhighlighted_params = list(size = 1)
     ) +
+    # ggrepel::geom_label_repel(
+    #   ggplot2::aes(x = week, 
+    #                y = priority_date,
+    #                label = label),
+    #                  nudge_x = 0,
+    #                  na.rm = TRUE) +
+    # ggplot2::geom_text(
+    #   ggplot2::aes(x = week, y = priority_date, label = label),
+    #   nudge_x = 0.5, nudge_y = 0.5, # Adjust these nudges for better label placement
+    #   size = 4,
+    #   color = "black",
+    #   vjust = 1.5,
+    #   show.legend = FALSE
+    # ) +
     ggplot2::scale_color_manual(values = c("Wet" = "dodgerblue", "Average" = "black", "Dry" = "darkred"), 
                                 guide = ggplot2::guide_legend(
                                   direction = "horizontal",
                                   title.position = "top"
                                 )) +
     ggplot2::labs(
-      title = paste0("Right-o-graph (District: ", district_lab, ")"),
+      title = paste0("Right-o-graph"),
+      # title = paste0("Right-o-graph (District: ", district_lab, ")"),
       # subtitle = "Water rights above priority date lines are called out by more senior rights at or below the priority date lines",
       # caption = "Black horizontal line represents average % out of priority over the period of record",
       x     = "",
       y     = "Priority Date",
-      color = "Year"
+      color = "Year Type"
     ) +
     ggplot2::theme_bw() +
     ggplot2::theme(
@@ -125,7 +498,7 @@ make_avg_yeartype_rightograph_plot <- function(df, type) {
       legend.text.align = 0,
       legend.key.height = unit(1, "cm")
     ) 
-  
+  rightograph
   return(rightograph)
   
   
@@ -751,6 +1124,206 @@ make_new_observed_plot2 <- function(
 #' @param verbose logical, should messages print or not. Default is FALSE, no messages print
 #' @return dataframe with weekly average climate variable values for each polygon in the provided aoi SF object
 #' @export
+eddi_from_catalog2 <- function(
+    catalog    = NULL,
+    aoi        = NULL,
+    varname    = NULL,
+    start_date = NULL,
+    end_date   = NULL,
+    name_col   = "district",
+    wide       = TRUE,
+    verbose    = FALSE
+) {
+  
+  # catalog    = cat
+  # aoi        = dplyr::mutate(dists, 
+  #                            district = as.integer(district))
+  # # varname    = "eddi30d"
+  # varname    = c("eddi30d", "eddi1y")
+  # start_date = Sys.Date() - 365
+  # # start_date = Sys.Date() - (365*5)
+  # end_date   = Sys.Date()
+  # name_col   = "district"
+  # wide       = TRUE
+  # verbose    = TRUE
+  
+  # rm(shp, aoi, varname, start_date, end_date, wide, verbose)
+  # aoi = dists2
+  # varname = "eddi30d"
+  # start_date = start
+  # end_date = end
+  # name_col = "district"
+  # wide       = TRUE
+  # verbose = TRUE
+  
+  # if no varname, use catalog variable name
+  if(is.null(varname)) {
+    varname <- unique(catalog$variable)
+  }
+  
+  # if start date is NULL
+  if(is.null(start_date)) {
+    
+    start_date = "1980-01-01"
+    
+  }
+  
+  # if end date is NULL
+  if(is.null(end_date)) {
+    
+    end_date = Sys.Date() - 1
+    
+  }
+  
+  # make name column name lowercase
+  name_col <- tolower(name_col)
+  
+  # make sure AOI is in correct CRS and is a MULTIPOLYGON
+  # # aoi <-
+  # shp <-
+  #   aoi %>%
+  #   sf::st_transform(4326) %>%
+  #   sf::st_cast("MULTIPOLYGON")
+  
+  # make lower case column names
+  names(aoi) <- tolower(names(aoi))
+  
+  message(paste0(
+    "Getting gridMET data...\n",
+    "-------------------------",
+    "\nStart date: ", start_date,
+    "\nEnd date: ", end_date
+  ))
+  
+  # get daily gridMET data
+  gridmet <- climateR::dap(
+    catalog   = catalog,
+    AOI       = aoi,
+    startDate = start_date,
+    endDate   = end_date,
+    verbose   = verbose
+  )
+  
+  # district names
+  district_names <- paste0(aoi[[name_col]])
+  
+  # remove gridMET "category" data that is accidently returned
+  gridmet <- gridmet[names(gridmet) != "category"]
+  
+  message(paste0("Getting April 1/May 1  EDDI values..."))
+  
+  # mask and crop variables for each polygon in 'aoi'
+  eddi_rasters <- lapply(1:length(gridmet), function(i) {
+    # i = 1
+    # loop over all polygons and crop/mask SpatRasters
+    lapply(seq_len(nrow(aoi)), function(x) {
+      # x = 1
+      raster_date_snapshots(
+        raster   = gridmet[[i]],
+        polygon  = aoi[x, ]
+      )
+    }
+    ) %>%
+      stats::setNames(district_names)
+    
+  }) %>%
+    stats::setNames(varname)
+  
+  # eddi_rasters %>% names()
+  # eddi_rasters$eddi30d %>% names()
+  # eddi_rasters$eddi1y %>% names()
+  
+  message(paste0("Calculating means..."))
+  
+  tidy_gridmet <- lapply(seq_along(eddi_rasters), function(i) {
+    
+    # lapply counter message
+    if(verbose) {
+      message(paste0(i, "/", length(eddi_rasters)))
+    }
+    
+    lapply(seq_along(eddi_rasters[[i]]), function(x) {
+      
+      eddi_rasters[[i]][[x]] %>%
+        as.data.frame(xy = F) %>%
+        dplyr::summarise(dplyr::across(dplyr::everything(), mean)) %>%
+        tidyr::pivot_longer(cols = dplyr::everything()) %>%
+        tidyr::separate(name, c("variable", "date"), sep = "_", extra = "merge") %>%
+        dplyr::mutate(
+          date      = as.Date(gsub("_", "-", date)),
+          district  = names(eddi_rasters[[i]])[x]
+          # units     = unique(terra::units(eddi_rasters[[i]][[x]]))
+        ) %>%
+        dplyr::relocate(district, date, variable, value)
+      
+    }) %>%
+      dplyr::bind_rows()
+    
+  }) %>%
+    dplyr::bind_rows()
+  
+  # plot to check outputs
+  # tidy_gridmet %>%
+  #   # dplyr::filter(district %in% c(1)) %>%
+  #   dplyr::filter(district %in% c(1, 2, 3, 4, 5, 6)) %>%
+  #   dplyr::mutate(
+  #     year  = lubridate::year(date),
+  #     month = lubridate::month(date, label = T)
+  #   ) %>%
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_line(ggplot2::aes(x = year, y = value, color = variable)) +
+  #   ggplot2::facet_grid(month~district)
+  
+  # if wide is TRUE, then pivot the table wider and return that
+  if(wide) {
+    
+    tidy_gridmet <-
+      tidy_gridmet %>%
+      dplyr::mutate(
+        year     = format(as.Date(date), "%Y"),
+        new_cols = paste0(
+          ifelse(format(as.Date(date), "%m") == "04", "apr", "may"),
+          "_",
+          variable
+        )
+      ) %>%
+      dplyr::select(-variable, -date) %>%
+      tidyr::pivot_wider(
+        # id_cols     = c(year, district),
+        names_from  = "new_cols",
+        values_from = "value"
+      ) %>%
+      dplyr::mutate(
+        district = dplyr::case_when(
+          as.numeric(district) < 10 ~ paste0("0", district),
+          TRUE                      ~ paste0(district)
+        )
+      )
+  } else {
+    
+    tidy_gridmet <-
+      tidy_gridmet %>%
+      dplyr::mutate(
+        month    = ifelse(format(as.Date(date), "%m") == "04", "apr", "may"),
+      ) %>%
+      dplyr::relocate(district, date, month, variable, value)
+    
+  }
+  
+  return(tidy_gridmet)
+}
+
+#' Get a single EDDI data value for each year on April 1 and May 1
+#'
+#' @param aoi SF
+#' @param varname Charcter vector, climateR::params for a list of gridMET climate parameters to choose from
+#' @param start_date starting date string (YYYY-MM-DD ). Defaults to "1980-01-01"
+#' @param end_date date string (YYYY-MM-DD ). Defaults to yesterday.
+#' @param name_col character, name of column in SF object that that uniquely identifies each polygon. Default is "district".
+#' @param wide logical, whether data should be return wide (column for each climate variable) or long (a column naming the variable and a column represnting the value of the variable). Default is TRUE, returns a wide dataframe
+#' @param verbose logical, should messages print or not. Default is FALSE, no messages print
+#' @return dataframe with weekly average climate variable values for each polygon in the provided aoi SF object
+#' @export
 eddi_from_catalog <- function(
     catalog    = NULL,
     aoi        = NULL,
@@ -980,7 +1553,15 @@ update_duration <- function(cat, days_from_today = 15) {
 #   verbose    = TRUE
 #   )
 # 
-# gm <- climateR::params %>% 
+# climateR::params %>%
+#   dplyr::filter(id == "gridmet", varname == "eddi") %>% 
+#   .$variable
+# gm2 <-
+#   climateR::params %>%
+#   dplyr::filter(id == "gridmet", variable %in% c("eddi30d", "eddi1y"), varname == "eddi")
+# saveRDS(gm2, "eddi_catalog2.rds")
+# 
+# gm <- climateR::params %>%
 #   dplyr::filter(id == "gridmet", variable == "eddi30d", varname == "eddi")
 # saveRDS(gm, "eddi_catalog.rds")
 # 

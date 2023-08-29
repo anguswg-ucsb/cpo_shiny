@@ -2,7 +2,7 @@
 title: "Colorado Water Rights"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: rows
+    orientation: columns
     vertical_layout: fill
     logo: www/lynker_logo_white_transparent.png
     css: www/custom.css
@@ -23,12 +23,15 @@ library(flexdashboard)
 # Data manipulation
 library(dplyr)
 library(ggplot2)
-library(DT)
+library(gt)
 
 # Mapping packages
 library(leaflet)
 library(leafem)
+
+# geospatial and climate data
 library(terra)
+library(climateR)
 
 # library(shinyjs)
 library(shinyBS)
@@ -39,97 +42,37 @@ source('final_utils.R')
 
 ```{r context="server"}
 # shinyjs::useShinyjs(rmd = TRUE)
-# water rights net amounts spatial data
 
-# wrs <- readr::read_csv("data/detrended_all_data_final.csv")
-# raw <- readr::read_csv("/Users/anguswatters/Downloads/cdss_raw_daily_call_data_combined.csv")
-# weekly_calls <- aggreg_weekly_district(raw)
-# avg_yeartype <-  aggreg_by_year_type(weekly_calls) %>%
-# dplyr::mutate(
-# year_type = dplyr::case_when(
-#                 year_type == "average" ~ "Average",
-#                 year_type == "wet" ~ "Wet",
-#                 year_type == "dry" ~ "Dry"
-#               )
-# )
-# saveRDS(weekly_calls, "data/weekly_calls_by_district.rds")
-# saveRDS(avg_yeartype, "data/weekly_calls_by_yeartype.rds")
-# dists      <- sf::read_sf("data/water_districts_simple.geojson") 
-# dists2 <- 
-#   dists %>% 
-#   dplyr::filter(DISTRICT %in% c(unique(avg_yeartype$district)))
-# sf::write_sf(dists2, "data/water_districts_subset.gpkg")  
-
-# # weekly calls data
-# weekly_calls <- readRDS("data/weekly_calls_by_district.rds")
-
-# # # average year type average priority date 
-# avg_yeartype <- readRDS("data/weekly_calls_by_yeartype.rds")
-
-# # subset of districts
-# dists      <- sf::read_sf("data/water_districts_subset.gpkg")
-# weekly_calls <- readr::read_csv("data/weekly_calls_by_district.rds")
-# year_types <- readr::read_csv("/Users/anguswatters/Downloads/water_district_yeartype.csv")
-# avg_yeartype$year_type %>% unique()
-# average year type average priority date 
-# avg_yeartype <- 
-#   weekly_calls %>% 
-#   dplyr::select(-year_type) %>% 
-#   dplyr::mutate(
-#     district = ifelse(district < 10, paste0("0", district), as.character(district))
-#     ) %>% 
-#   dplyr::left_join(
-#     dplyr::mutate(
-#       year_types,
-#       district = ifelse(district < 10, paste0("0", district), as.character(district)),
-#       year     = as.character(year)
-#     ),
-#     by = c("district", "year")
-#   ) %>% 
-#   dplyr::rename(year_type = type) %>% 
-#   na.omit() %>% 
-#   aggreg_by_year_type() %>% 
-#   dplyr::mutate(
-#     year_type = dplyr::case_when(
-#                     year_type == "average" ~ "Average",
-#                     year_type == "wet" ~ "Wet",
-#                     year_type == "dry" ~ "Dry"
-#                   )
-#     ) %>% 
-#   dplyr::mutate(district = as.numeric(district))
-# 
-# saveRDS(avg_yeartype, "data/avg_weekly_calls_by_yeartype.rds")
-
-# # weekly calls data
-# weekly_calls <- readRDS("data/weekly_calls_by_district.rds")
-
-# # # average year type average priority date 
-# avg_yeartype <- readRDS("data/weekly_calls_by_yeartype.rds")
-
+# water rights data
 water_rights <- readr::read_csv("detrended_all_data_final_v2.csv")
 
 # linear regression lookup table
-lm_lookup <- readr::read_csv("cpo_linear_regression_lookup.csv")
+lm_lookup <- readr::read_csv("cpo_linear_regression_lookup_v2.csv")
+
+# lm_lookup <- readr::read_csv("cpo_linear_regression_lookup.csv")
 
 # subset of districts
 # dists      <- sf::read_sf("water_districts_subset.gpkg")
 dists <- sf::read_sf("water_districts_subset2.gpkg")
 
 # catalog entry for getting EDDI data
-cat <- readRDS("eddi_catalog.rds") %>% 
+cat <- readRDS("eddi_catalog2.rds") %>% 
   update_duration()
+# cat <- readRDS("eddi_catalog.rds") %>% 
+#   update_duration()
 
+# get new EDDI 30 Day data when application loads
 new_eddi <- eddi_from_catalog(
   catalog    = cat,
   aoi        = dplyr::mutate(dists, 
                              district = as.integer(district)),
-  varname    = "eddi30d",
+  varname    = c("eddi30d", "eddi1y"),
+  # varname    = "eddi30d",
   start_date = Sys.Date() - 365,
   end_date   = Sys.Date(),
   name_col   = "district",
   verbose    = FALSE
   )
-
 
 # all_dists   <- sf::read_sf("water_districts_simple.geojson") %>%
 #   dplyr::filter(DISTRICT  %in% c(1, 2, 3,  4, 5, 6,7, 8, 9, 23, 80, 64)) %>%
@@ -141,16 +84,16 @@ new_eddi <- eddi_from_catalog(
 #   sf::st_cast("MULTIPOLYGON")
 # sf::write_sf(all_dists, "water_districts_subset2.gpkg")
 
+# average yeartype data
 avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds") %>% 
   dplyr::mutate(
       district = ifelse(district < 10, paste0("0", district), as.character(district))
     )
 
-# districts of interest
-doi   = unique(lm_lookup$district)
-
-# districts for Linear Regression models on Page 2
-model_dists <-  dists
+# # districts of interest
+# doi   = unique(lm_lookup$district)
+# # districts for Linear Regression models on Page 2
+# model_dists <-  dists
 # model_dists <- 
 #   dists %>% 
 #   # dplyr::filter(DISTRICT %in% c("1", "5", "8", "64")) %>% 
@@ -161,10 +104,10 @@ model_dists <-  dists
 
 # data used to generate linear regression models
 # mod_df <- readRDS("model_data.rds")
-mod_df <- readRDS("mlr_model_data.rds")
-
+mod_df <- readRDS("mlr_model_data2.rds")
+# mod_df$predictor_long_name
 #  list of linear regression models and metrics
-lm_list <- readRDS("mlr_model_list.rds")
+lm_list <- readRDS("mlr_model_list2.rds")
 # lm_list <- readRDS("lin_reg_model_list2.rds")
 
 # # make a list of linear regression models from a dataframe of districts with these columns: 
@@ -173,14 +116,13 @@ lm_list <- readRDS("mlr_model_list.rds")
 # saveRDS(lm_list, "data/lin_reg_model_list.rds")
 
 # lm_list <- readRDS("data/lin_reg_model_list2.rds")
-
 # lm_out <- make_lm(model_data = dist_mod_df())
 
 # base leaflet map on page 1
 output$baseMap       <- leaflet::renderLeaflet({ dist_basemap(shp = dists) })
 
 # Model base leaflet map on page 2
-output$modelBaseMap       <- leaflet::renderLeaflet({ model_basemap(shp = model_dists) })
+output$modelBaseMap       <- leaflet::renderLeaflet({ model_basemap(shp = dists) })
 ```
 
 ```{r context="server"}
@@ -247,7 +189,7 @@ model_dist_id <- shiny::reactive({
 # subset district polygon based on districtInput
 sub_dist2 <- shiny::reactive({
   # subset to water district of interest
-   # model_dists[model_dists$DISTRICT == model_dist_id(), ]
+   # dists[dists$DISTRICT == model_dist_id(), ]
 
     # subset to water district of interest
     if(is.null(model_dist_id())) {
@@ -255,15 +197,15 @@ sub_dist2 <- shiny::reactive({
       return(NULL)
 
     } else {
-      model_dists[model_dists$district == model_dist_id(), ]
+      dists[dists$district == model_dist_id(), ]
     }
 
 })
 
-# model_dists[model_dists$DISTRICT == model_dist_id(), ]
+# dists[dists$DISTRICT == model_dist_id(), ]
 # sub_dist2 <- shiny::reactive({
 #   # subset to water district of interest
-#    # model_dists[model_dists$DISTRICT == model_dist_id(), ]
+#    # dists[dists$DISTRICT == model_dist_id(), ]
 #   
 #     # subset to water district of interest
 #     if(is.null(model_dist_id()) | model_dist_id() == " ") {
@@ -271,12 +213,12 @@ sub_dist2 <- shiny::reactive({
 #       return(NULL)
 #       
 #     } else {
-#       model_dists[model_dists$DISTRICT == model_dist_id(), ]
+#       dists[dists$DISTRICT == model_dist_id(), ]
 #     }
 #   
 # })
-# model_dists[model_dists$DISTRICT == model_dist_id(), ]
-# model_dists[model_dists$DISTRICT == "01", ]
+# dists[dists$DISTRICT == model_dist_id(), ]
+# dists[dists$DISTRICT == "01", ]
 ```
 
 ```{r context="server"}
@@ -341,16 +283,57 @@ dist_mod_df <- shiny::reactive({
 eddi_df <- shiny::reactive({
   new_eddi %>% 
     dplyr::filter(district == model_dist_id())
+    # new_eddi %>% 
+    # dplyr::filter(district == "01")
     # dplyr::filter(district == dist_id(), 
     #               year_type == input$radioYearTypeButtons)
 })
 ```
 
 ```{r context="server"}
-eddi_val <- shiny::reactive({
-    dplyr::filter(new_eddi, district == model_dist_id())$may_eddi30d 
-    # dplyr::filter(new_eddi, district == "01")$may_eddi30d 
+# EDDI variable name for selected district
+eddi_variable <- shiny::reactive({
 
+  if(is.null(model_dist_id())) {
+    return("")
+  } else {
+    return(
+      dplyr::filter(
+        lm_lookup,
+        district == model_dist_id())$predictor_name2
+      )
+    
+  }
+  # dplyr::filter(lm_lookup, district == "01")$predictor_name2
+  # new_eddi %>% 
+  #   dplyr::filter(district == model_dist_id())
+    # dplyr::filter(district == dist_id(), 
+    #               year_type == input$radioYearTypeButtons)
+})
+```
+
+```{r context="server"}
+# EDDI value for selected district
+eddi_val <- shiny::reactive({
+    
+  if(is.null(model_dist_id())) {
+    return(0)
+  } else {
+    return(
+      # dplyr::filter(
+      #   new_eddi,
+      #   district == model_dist_id())$may_eddi30d
+      dplyr::filter(new_eddi, 
+                    district == model_dist_id())[[eddi_variable()]]
+      )
+    
+  }
+  
+  # dplyr::filter(new_eddi, district == "01")$may_eddi30d 
+  # variable = "may_eddi30d"
+  # dplyr::filter(new_eddi, district == "01")[[variable]]
+  # dplyr::filter(new_eddi, 
+  #               district == model_dist_id())[[eddi_variable()]]
   # new_eddi %>% 
   #   dplyr::filter(district == model_dist_id())
     # dplyr::filter(district == dist_id(), 
@@ -485,7 +468,8 @@ predictor_label <- shiny::reactive({
     
   } else {
     
-    return(paste0("Enter ", toupper(predictor_long_str()), " value..."))
+    # return(paste0("Enter ", toupper(predictor_long_str()), " value..."))
+    return(paste0("Enter ", predictor_long_str(), " value..."))
     
   }
 })
@@ -523,7 +507,76 @@ shiny::radioButtons(
 
 - ADD POPOVERS/TOOLTIPS TO EACH PANEL AS WELL
 
-Row
+Column {data-width=500}
+---------------------------------------------------------
+### District
+```{r}
+flexdashboard::valueBoxOutput("districtValueBoxMap1")
+shinyBS::bsPopover(
+  "districtValueBoxMap1",
+  title     = "",
+  content   = "Water district",
+  placement = "bottom",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
+```
+
+```{r context="server"}
+# {r context="server"}
+# flexdashboard::valueBox(value = model_dist_id())
+# ("primary", "info", "success", "warning", "danger")
+output$districtValueBoxMap1 <- flexdashboard::renderValueBox(
+  flexdashboard::valueBox(
+    value = paste0("District: "),
+    color = "primary",
+    caption = " "
+    )
+)
+
+# Value box server
+shiny::observeEvent(dist_id(), {
+# shiny::observeEvent(event_trigger(), {
+      # print("observer4")
+
+      # Public Safety value box server
+      output$districtValueBoxMap1 <- flexdashboard::renderValueBox(
+        flexdashboard::valueBox(
+          value = paste0("District: ", dist_id()),
+          color = "primary",
+          caption = " "
+          )
+        )
+
+})
+```
+
+###
+```{r}
+shiny::plotOutput("callDatePlot")
+shinyBS::bsPopover(
+  "callDatePlot",
+  title     = "Annual historic call dates by week",
+  content   = "After clicking on a district on the map above, a lineplot showing the selected district's historic average call date (Y axis) for a given week of the year (X axis). The 3 lines each represent a different average value calculated for across all years for a given year type (dry, average, and wet). Year types were calculated by creating terciles from the annual total streamflow discharge volume at a representative USGS gage for each district.",
+  placement = "left",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
+```
+
+Column {data-width=500}
 ---------------------------------------------------------
 ###
 ```{r}
@@ -696,27 +749,6 @@ shiny::observeEvent(input$baseMap_shape_click, {
           })
 ```
 
-Row
----------------------------------------------------------
-###
-```{r}
-shiny::plotOutput("callDatePlot")
-shinyBS::bsPopover(
-  "callDatePlot",
-  title     = "Annual historic call dates by week",
-  content   = "After clicking on a district on the map above, a lineplot showing the selected district's historic average call date (Y axis) for a given week of the year (X axis). The 3 lines each represent a different average value calculated for across all years for a given year type (dry, average, and wet). Year types were calculated by creating terciles from the annual total streamflow discharge volume at a representative USGS gage for each district.",
-  placement = "left",
-  options   = list(container = "body")
-  )
-tags$style(HTML("
-                .tooltip > .tooltip-inner {
-                width: 400px;
-                color: black;
-                background-color: white;
-                }
-                "))
-```
-
 Regression models 
 ==========================================
 
@@ -733,25 +765,71 @@ Inputs {.sidebar}
 #                   label   = "Select a district",
 #                   value = NULL
 #                   )
-shiny::selectInput(
-   inputId = "districtInput",
-   label   = "Select a district",
-   choices = c(
-              "1" = "01", 
-              "2" = "02", 
-              "3" = "03", 
-              "4" = "04", 
-              "5" = "05", 
-              "6" = "06",
-              "7" = "07",
-              "8" = "08",
-              "9" = "09",
-              "23" = "23",
-              "64" = "64",
-              "80" = "80"
-              ),
-   selected = NULL
-   )
+# shiny::selectInput(
+#    inputId = "districtInput",
+#    label   = "Select a district",
+#    choices = c(
+#               # "" = NA,
+#               "1" = "01", 
+#               "2" = "02", 
+#               "3" = "03", 
+#               "4" = "04", 
+#               "5" = "05", 
+#               "6" = "06",
+#               "7" = "07",
+#               "8" = "08",
+#               "9" = "09",
+#               "23" = "23",
+#               "64" = "64",
+#               "80" = "80"
+#               ),
+#    selected = NULL
+#    )
+# shiny::selectInput(
+#    inputId = "districtInput",
+#    label   = "Select a district",
+#    choices = c(
+#               # "" = NA,
+#               "1" = "01", 
+#               "2" = "02", 
+#               "3" = "03", 
+#               "4" = "04", 
+#               "5" = "05", 
+#               "6" = "06",
+#               "7" = "07",
+#               "8" = "08",
+#               "9" = "09",
+#               "23" = "23",
+#               "64" = "64",
+#               "80" = "80"
+#               ),
+#    selected  = FALSE,
+#    multiple  = FALSE, 
+#    selectize = FALSE,
+#    size      = 12
+#    )
+
+shiny::selectizeInput(
+  inputId = "districtInput",
+  label   = "Select a district",
+  choices = c(
+                # "" = NA,
+                "1" = "01", 
+                "2" = "02", 
+                "3" = "03", 
+                "4" = "04", 
+                "5" = "05", 
+                "6" = "06",
+                "7" = "07",
+                "8" = "08",
+                "9" = "09",
+                "23" = "23",
+                "64" = "64",
+                "80" = "80"
+                ),
+  multiple = TRUE, 
+  options = list(maxItems = 1)
+  ) 
 
 shiny::textInput(inputId = "newDataInput", 
                  # label = predictor_label(),
@@ -782,13 +860,13 @@ shiny::observeEvent(predictor_label(), {
 
 - ADD POPOVERS/TOOLTIPS TO EACH PANEL AS WELL
 
-Row
+Column {data-width=500}
 ---------------------------------------------------------
 ### District
 ```{r}
-flexdashboard::valueBoxOutput("districtValueBox")
+flexdashboard::valueBoxOutput("districtValueBoxMap2")
 shinyBS::bsPopover(
-  "districtValueBox",
+  "districtValueBoxMap2",
   title     = "",
   content   = "Water district",
   placement = "bottom",
@@ -807,7 +885,7 @@ tags$style(HTML("
 # {r context="server"}
 # flexdashboard::valueBox(value = model_dist_id())
 # ("primary", "info", "success", "warning", "danger")
-output$districtValueBox <- flexdashboard::renderValueBox(
+output$districtValueBoxMap2 <- flexdashboard::renderValueBox(
   flexdashboard::valueBox(
     value = paste0("District: "),
     color = "primary",
@@ -821,7 +899,7 @@ shiny::observeEvent(model_dist_id(), {
       # print("observer4")
 
       # Public Safety value box server
-      output$districtValueBox <- flexdashboard::renderValueBox(
+      output$districtValueBoxMap2 <- flexdashboard::renderValueBox(
         flexdashboard::valueBox(
           value = paste0("District: ", model_dist_id()),
           color = "primary",
@@ -830,6 +908,362 @@ shiny::observeEvent(model_dist_id(), {
         )
 
 })
+```
+
+### Model Map
+```{r}
+leaflet::leafletOutput("modelBaseMap")
+shinyBS::bsPopover(
+  "modelBaseMap",
+  title     = "Colorado South Platte Water Districts",
+  content   = "Use the selection drop down in the left panel to select and highlight a water district on the map",
+  placement = "bottom",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
+```
+
+```{r context="server"}
+# # # Clicking on map 1 outputs Value boxes on both pages + catchment polygons + Dat table + success panel
+# # # observeEvent(input$districtMapMLR_click, {
+# # shiny::observeEvent(input$modelBaseMap_shape_click, {
+shiny::observeEvent(model_dist_id(), {
+   if(is.null(model_dist_id())) {
+
+     return(NULL)
+
+   } else {
+
+          # pt <- sf::st_as_sf(
+          #           data.frame(
+          #             lat = model_map_click()$lat,
+          #             lng = model_map_click()$lng
+          #             ),
+          #           coords = c("lng", "lat"),
+          #           crs = 4326
+          #           )
+          # # 39.7792 -105.7214
+          # # 40.66392 -105.4837
+          # # 40.69808 -105.6
+          #  print(paste0("Map 2 latitude ---> ", model_map_click()$lat))
+          #  print(paste0("Map 2 longitude ---> ", model_map_click()$lng))
+          # # print(paste0("Subsetting mainstems to HUC4: ",  model_dist_id()))
+          # print(paste0("Page 2 district selection ---> ", model_dist_id()))
+          # 
+          # print(paste0("Highlighting district ", model_dist_id(), " based on districtInput change..."))
+
+          # # subset to water district of interest
+          # sub_dist2 <- dists[dists$DISTRICT == model_dist_id(), ]
+     
+          print(paste0("===== model_dist_id: ", model_dist_id(), " ====="))
+     
+          print(paste0("===== predictor_str(): ", predictor_str(), " ====="))
+          print(paste0("===== predictor_label(): ", predictor_label(), " ====="))
+          
+          print(paste0("===== predictor_str2(): ", predictor_str2(), " ====="))
+          print(paste0("===== predictor_long_str2(): ", predictor_long_str2(), " ====="))
+          
+          print(paste0("===== eddi_variable(): ", eddi_variable(), " ====="))
+          print(paste0("===== eddi_val(): ", eddi_val(), " ====="))
+          
+          print("Updating leaflet map...")
+
+          # dynamically alter leaflet map
+          leaflet::leafletProxy("modelBaseMap") %>%
+              leaflet::clearMarkers() %>%
+              leaflet::clearShapes() %>%
+              leaflet::clearGroup(c("subdist2")) %>%
+                # leaflet::removeShape(layerId = levelpathi) %>%
+                leaflet::addPolygons(
+                      data         = dists,
+                      fillColor    = 'white',
+                      # fillColor = 'grey',
+                      # fillColor = ~pal_fact(BASIN),
+                      fillOpacity  = 0.7,
+                      col          = "black",
+                      opacity      = 1,
+                      weight       = 2.5,
+                      label        = ~paste0("District: ", district),
+                      layerId      = ~district,
+                      labelOptions = leaflet::labelOptions(
+                                          noHide = F,
+                                          style  = list(
+                                            "color" = "black",
+                                            "font-weight" = "1000")
+                                        )
+                  ) %>%
+                leaflet::addPolygons(
+                      # data         = sub_dist2,
+                    data         = sub_dist2(),
+                    fillColor    = '#3EB489',
+                    # fillColor = 'grey',
+                    # fillColor = ~pal_fact(BASIN),
+                    fillOpacity  = 0.5,
+                    col          = "black",
+                    opacity      = 1,
+                    weight       = 3,
+                    group        = "subdist2",
+                    label        = ~paste0("district: ", district),
+                    layerId      = ~district,
+                    labelOptions = leaflet::labelOptions(
+                                        noHide = F,
+                                        style  = list(
+                                          "color" = "black",
+                                          "font-weight" = "1000")
+                                      )
+                )
+
+              # print(paste0("- list_id(): ", list_id()))
+              # print(paste0("- class(model_obj()): ",
+              #              class(model_obj()))
+              #       )
+              # 
+              #  print(paste0("- class(model_data()): ",
+              #              class(model_data()))
+              #        )
+
+             shiny::observe({
+
+                  if(is.null(dist_mod_df())) {
+                      print(paste0("dist_mod_df is NULL"))
+                       return(NULL)
+                     } else {
+
+                     #######################################################################
+                     # ---- RENDER OBSERVED POINTS AND OBSERVED EDDI AND FORECAST PLOTS ----
+                     #######################################################################
+                     
+                    #  # render observed resposne vs observed predictors points plot for selected district
+                    #  output$observedPointPlot <- shiny::renderPlot({
+                    #       # make a predictor vs fitted values plot
+                    #     make_observed_plot2(
+                    #       df       = model_data(),
+                    #       pred_col = "predictor_val1",
+                    #       yaxis    = predictor_long_str(),
+                    #       ylim     = c(0, 1000)
+                    #       )
+                    #     })
+                    #  
+                    # # render observed resposne vs observed predictors points plot for selected district
+                    #  output$observedEDDIPointPlot <- shiny::renderPlot({
+                    #     # make a predictor vs fitted values plot
+                    #     make_observed_plot2(
+                    #       df       = model_data(),
+                    #       pred_col = "predictor_val2",
+                    #       yaxis    = predictor_long_str2(),
+                    #       ylim     = c(-4, 4)
+                    #       )
+                    #     })
+
+                    # Render new R Squared value into value box
+                    output$rSquaredValueBox <- flexdashboard::renderValueBox(
+                                    flexdashboard::valueBox(
+                                      # value = paste0("R2: ", lm_out$r2),
+                                      # value = paste0("R2: ", lm_data()$r2),
+                                      value =  HTML(paste0("R",tags$sup("2"), ": " , round(lm_data()$r2, 2))),
+                                      color = "warning",
+                                      caption = " "
+                                      )
+                                  )
+                     }
+
+
+               # print(paste0("----> current_district: ", model_dist_id()))
+
+               })
+
+             }
+          })
+#
+# # # if "predict" button is clicked and there is a value in the newDataInput text box, make a prediction
+shiny::observeEvent(input$newDataInputButton, {
+
+        # start_district = model_dist_id()
+        #
+        # print(paste0("----> start_district: ", start_district))
+
+        # if an input has been put into text box
+        if (!is.null(input$newDataInput)) {
+
+          print(paste0("input$newDataInput: ",input$newDataInput))
+
+          # # make a prediction with new data from user input
+          # pred <- make_prediction(
+          #   model     = model_obj(),
+          #   predictor = predictor_str(),
+          #   val       = as.numeric(input$newDataInput)
+          # )
+          
+          # make a prediction with new data from user input
+          pred <- make_mlr_prediction(
+            model = model_obj(),
+            pred1 = predictor_str1(),
+            pred2 = predictor_str2(),
+            val1  = as.numeric(input$newDataInput),
+            val2  = eddi_val()
+          )
+          # pred$fitted
+          ##########################################
+          ##########################################
+          
+            # model_tbl <- 
+            #   dplyr::bind_cols(
+            #     dplyr::filter(lm_lookup, district == model_dist_id()),
+            #     pred
+            #   )
+            # paste0("Call year ~ ", predictor_long_str(), " + ", predictor_long_str2())
+            df_tbl <- dplyr::tibble(
+              col1 = c(predictor_long_str(),
+                       predictor_long_str2(),
+                       "Prediction",
+                       "Equation", 
+                       "R²"
+              ),
+              col2 = c(
+                round(as.numeric(input$newDataInput), 2),
+                round(eddi_val(), 2), 
+                round(pred$fitted, 0),
+                # model_tbl$equation, 
+                paste0("Call year ~ ", predictor_long_str(), " + ", predictor_long_str2()),
+                round(lm_data()$r2, 2)
+              ),
+              row_name = c("-", "-", "-", "-", "-"),
+              group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
+            )
+          
+            
+            model_table <- 
+              df_tbl %>% 
+              gt::gt(rowname_col = "row_name", groupname_col = "group") %>% 
+              gt::tab_header(
+                # title = md("**My Table Title**")
+                title = gt::md(paste0(
+                                lm_lookup$district_name[lm_lookup$district == model_dist_id()]
+                                  )
+                                ),
+                subtitle = gt::md(paste0("**District: ", model_dist_id(), "**"))
+                # title = md(paste0("**District: ", district_num, "**")),
+                # subtitle = md(paste0(district_name))
+              ) %>%
+              gt::tab_style(
+                style = list(
+                  gt::cell_text(color = "white")  # Change the color to your preferred color
+                ),
+                locations = gt::cells_column_labels()
+              ) %>%
+              gt::tab_style(
+                style = gt::cell_text(weight = "bold"),
+                # locations = cells_column_labels(columns = "group")
+                # locations = cells_body(columns = group)
+                locations = gt::cells_row_groups()
+              )
+
+          output$gtModelTable <- gt::render_gt({
+            model_table
+          })
+
+          ##########################################
+          ##########################################
+          
+          # pred$predictor_long_name1 <- lm_l
+          # make a prediction with new data from user input
+          pred <- make_mlr_prediction(
+            model     = model_obj(),
+            pred1 = predictor_str1(),
+            pred2 = predictor_str2(),
+            val1       = as.numeric(input$newDataInput),
+            val2  = eddi_val()
+          )
+
+
+          print(paste0("prediction value: ", pred$fitted[1]))
+
+          # update the prediction value Value Box
+          output$predictionValueBox <- flexdashboard::renderValueBox(
+                          flexdashboard::valueBox(
+                            # value = paste0("R2: ", lm_out$r2),
+                            value = paste0("Prediction: ", round(pred$fitted, 0)),
+                            color = "success",
+                            caption = " "
+                            )
+                        )
+
+          # # Update the plot based on the new prediction
+          # output$predictorFitPlot <- shiny::renderPlot({
+          # 
+          #     make_new_predfit_plot(
+          #       df = model_data(),
+          #       # df = lm_out$model_data,
+          #       pred_df = pred
+          #     )
+          #   
+          # })
+        
+          # lm_list[["district_01"]]$model
+          # predictor lm_list[["district_01"]]$model_data$predictor_long_name[1]
+          #               pred <- make_prediction(
+          #                    model     = lm_list[["district_01"]]$model,
+          #             predictor = lm_list[["district_01"]]$model_data$predictor_long_name[1],
+          #             val       = as.numeric(200))
+          #           df = lm_list[["district_01"]]$model_data
+          
+          #########################################################################
+          # ----- EDDI vs call year AND Observed Predictor vs call year PLOTS -----
+          #########################################################################
+          
+          # # Update the plot based on the new prediction
+          # output$observedPointPlot <- shiny::renderPlot({
+          #   
+          #     # make_new_observed_plot(
+          #     #   df      = model_data(),
+          #     #   pred_df = pred,
+          #     #   yaxis   = NULL
+          #     # )
+          #   
+          #   make_new_observed_plot2(
+          #       df      = model_data(),
+          #       pred_col = "predictor_val1",
+          #       pred_df = pred,
+          #       yaxis = predictor_long_str(),
+          #       ylim = c(0, 1000)
+          #   )
+          # 
+          # })
+          # 
+          # output$observedEDDIPointPlot <- shiny::renderPlot({
+          #   
+          #     # make_new_observed_plot(
+          #     #   df      = model_data(),
+          #     #   pred_df = pred,
+          #     #   yaxis   = NULL
+          #     # )
+          #   
+          #   make_new_observed_plot2(
+          #       df      = model_data(),
+          #       pred_col = "predictor_val2",
+          #       pred_df = pred,
+          #       yaxis = predictor_long_str2(),
+          #       ylim = c(-4, 4)
+          #   )
+          # 
+          # })
+        }
+      })
+```
+
+Column {data-width=250}
+---------------------------------------------------------
+###
+```{r}
+# # output prediction value box UI
+gt::gt_output("gtModelTable")
+# flexdashboard::valueBoxOutput("predictionValueBox")
 ```
 
 ###
@@ -842,9 +1276,27 @@ flexdashboard::valueBoxOutput("eddiValueBox")
 # # Render the prediction value Value Box
 output$eddiValueBox <- flexdashboard::renderValueBox(
   flexdashboard::valueBox(
-    value = paste0("EDDI: ", round(eddi_val(), 2)),
+    # value = paste0("EDDI: ", round(eddi_val(), 2)),
+        value = paste0("Predictor: ", round(eddi_val(), 2)),
     color = "danger",
-    caption = " "
+    caption = predictor_long_str2()
+    )
+)
+```
+
+###
+```{r}
+# # output prediction value box UI
+flexdashboard::valueBoxOutput("primaryPredictorValueBox")
+```
+
+```{r context="server"}
+# # Render the prediction value Value Box
+output$primaryPredictorValueBox <- flexdashboard::renderValueBox(
+  flexdashboard::valueBox(
+    value = paste0("Predictor: ", round(as.numeric(input$newDataInput), 2)),
+    color = "danger",
+    caption = predictor_long_str()
     )
 )
 ```
@@ -898,363 +1350,45 @@ output$predictionValueBox <- flexdashboard::renderValueBox(
 )
 ```
 
-Row
----------------------------------------------------------
-### Model Map
-```{r}
-leaflet::leafletOutput("modelBaseMap")
-shinyBS::bsPopover(
-  "modelBaseMap",
-  title     = "Colorado South Platte Water Districts",
-  content   = "Use the selection drop down in the left panel to select and highlight a water district on the map",
-  placement = "bottom",
-  options   = list(container = "body")
-  )
-tags$style(HTML("
-                .tooltip > .tooltip-inner {
-                width: 400px;
-                color: black;
-                background-color: white;
-                }
-                "))
-```
+<!-- Row -->
+<!-- --------------------------------------------------------- -->
+<!-- ### Observed EDDI -->
+<!-- ```{r} -->
+<!-- # shiny::plotOutput("observedEDDIPointPlot") -->
+<!-- # shinyBS::bsPopover( -->
+<!-- #   "observedPointPlot", -->
+<!-- #   title     = "Observed call year vs. Observed May 1 EDDI 30 day", -->
+<!-- #   content   = "", -->
+<!-- #   placement = "top", -->
+<!-- #   options   = list(container = "body") -->
+<!-- #   ) -->
+<!-- # tags$style(HTML(" -->
+<!-- #                 .tooltip > .tooltip-inner { -->
+<!-- #                 width: 400px; -->
+<!-- #                 color: black; -->
+<!-- #                 background-color: white; -->
+<!-- #                 } -->
+<!-- #                 ")) -->
+<!-- ``` -->
 
-```{r context="server"}
-# # # Clicking on map 1 outputs Value boxes on both pages + catchment polygons + Dat table + success panel
-# # # observeEvent(input$districtMapMLR_click, {
-# # shiny::observeEvent(input$modelBaseMap_shape_click, {
-shiny::observeEvent(model_dist_id(), {
-   if(is.null(model_dist_id())) {
-
-     return(NULL)
-
-   } else {
-
-          # pt <- sf::st_as_sf(
-          #           data.frame(
-          #             lat = model_map_click()$lat,
-          #             lng = model_map_click()$lng
-          #             ),
-          #           coords = c("lng", "lat"),
-          #           crs = 4326
-          #           )
-          # # 39.7792 -105.7214
-          # # 40.66392 -105.4837
-          # # 40.69808 -105.6
-          #  print(paste0("Map 2 latitude ---> ", model_map_click()$lat))
-          #  print(paste0("Map 2 longitude ---> ", model_map_click()$lng))
-          # # print(paste0("Subsetting mainstems to HUC4: ",  model_dist_id()))
-          # print(paste0("Page 2 district selection ---> ", model_dist_id()))
-          # 
-          # print(paste0("Highlighting district ", model_dist_id(), " based on districtInput change..."))
-
-          # # subset to water district of interest
-          # sub_dist2 <- model_dists[model_dists$DISTRICT == model_dist_id(), ]
-
-
-          print("Updating leaflet map...")
-
-          # dynamically alter leaflet map
-          leaflet::leafletProxy("modelBaseMap") %>%
-              leaflet::clearMarkers() %>%
-              leaflet::clearShapes() %>%
-              leaflet::clearGroup(c("subdist2")) %>%
-                # leaflet::removeShape(layerId = levelpathi) %>%
-                leaflet::addPolygons(
-                      data         = model_dists,
-                      fillColor    = 'white',
-                      # fillColor = 'grey',
-                      # fillColor = ~pal_fact(BASIN),
-                      fillOpacity  = 0.7,
-                      col          = "black",
-                      opacity      = 1,
-                      weight       = 2.5,
-                      label        = ~paste0("District: ", district),
-                      layerId      = ~district,
-                      labelOptions = leaflet::labelOptions(
-                                          noHide = F,
-                                          style  = list(
-                                            "color" = "black",
-                                            "font-weight" = "1000")
-                                        )
-                  ) %>%
-                leaflet::addPolygons(
-                      # data         = sub_dist2,
-                    data         = sub_dist2(),
-                    fillColor    = '#3EB489',
-                    # fillColor = 'grey',
-                    # fillColor = ~pal_fact(BASIN),
-                    fillOpacity  = 0.5,
-                    col          = "black",
-                    opacity      = 1,
-                    weight       = 3,
-                    group        = "subdist2",
-                    label        = ~paste0("district: ", district),
-                    layerId      = ~district,
-                    labelOptions = leaflet::labelOptions(
-                                        noHide = F,
-                                        style  = list(
-                                          "color" = "black",
-                                          "font-weight" = "1000")
-                                      )
-                )
-
-              print(paste0("===== model_dist_id: ", model_dist_id(), " ====="))
-              print(paste0("===== predictor_str(): ", predictor_str(), " ====="))
-              print(paste0("===== predictor_label(): ", predictor_label(), " ====="))
-              # print(paste0("- list_id(): ", list_id()))
-              # print(paste0("- class(model_obj()): ",
-              #              class(model_obj()))
-              #       )
-              # 
-              #  print(paste0("- class(model_data()): ",
-              #              class(model_data()))
-              #        )
-
-             shiny::observe({
-
-                  # if(is.null(model_dist_id()) & is.null(dist_mod_df())) {
-                  if(is.null(dist_mod_df())) {
-                      print(paste0("dist_mod_df is NULL"))
-
-                       return(NULL)
-             #
-                     } else {
-
-                     # # render fitted points plot for selected district
-                     # output$fittedPointPlot <- shiny::renderPlot({
-                     # 
-                     #   # make a fitted plot with current model data
-                     #     make_fitted_plot(
-                     #                    df = model_data()
-                     #                    )
-                     # 
-                     #    })
-                     # 
-                     # # render fitted points plot for selected district
-                     # output$predictorFitPlot <- shiny::renderPlot({
-                     #    # make a predictor vs fitted values plot
-                     #    make_predictor_fit_plot(df = model_data())
-                     #      # make_predictor_fit_plot(df = lm_out$model_data)
-                     #    })
-                     
-                     # render observed resposne vs observed predictors points plot for selected district
-                     output$observedPointPlot <- shiny::renderPlot({
-                        # # make a predictor vs fitted values plot
-                        # make_observed_plot(
-                        #   df    = model_data(),
-                        #   yaxis = NULL
-                        #   )
-                        # 
-                          # make a predictor vs fitted values plot
-                        make_observed_plot2(
-                          df       = model_data(),
-                          pred_col = "predictor_val1",
-                          yaxis    = predictor_long_str(),
-                          ylim     = c(0, 1000)
-                          )
-                      #  make_observed_plot2(
-                      #       df = df, 
-                      #       pred_col = "predictor_val1",
-                      #       yaxis = df$predictor_long_name[1],
-                      #       ylim = c(0, 1000)
-                      #     )
-                      # 
-                      # make_observed_plot2(
-                      #   df = df, 
-                      #   pred_col = "predictor_val2",
-                      #   yaxis = df$predictor_long_name2[1],
-                      #   ylim = c(-4, 4)
-                      # )
-                       
-                          # make_predictor_fit_plot(df = lm_out$model_data)
-                        })
-                     
-                               # render observed resposne vs observed predictors points plot for selected district
-                     output$observedEDDIPointPlot <- shiny::renderPlot({
-                        # make a predictor vs fitted values plot
-                        make_observed_plot2(
-                          df       = model_data(),
-                          pred_col = "predictor_val2",
-                          yaxis    = predictor_long_str2(),
-                          ylim     = c(-4, 4)
-                          )
-                      #  make_observed_plot2(
-                      #       df = df, 
-                      #       pred_col = "predictor_val1",
-                      #       yaxis = df$predictor_long_name[1],
-                      #       ylim = c(0, 1000)
-                      #     )
-                      # 
-                      # make_observed_plot2(
-                      #   df = df, 
-                      #   pred_col = "predictor_val2",
-                      #   yaxis = df$predictor_long_name2[1],
-                      #   ylim = c(-4, 4)
-                      # )
-                       
-                          # make_predictor_fit_plot(df = lm_out$model_data)
-                        })
-
-                    # Render new R Squared value into value box
-                    output$rSquaredValueBox <- flexdashboard::renderValueBox(
-                                    flexdashboard::valueBox(
-                                      # value = paste0("R2: ", lm_out$r2),
-                                      # value = paste0("R2: ", lm_data()$r2),
-                                      value =  HTML(paste0("R",tags$sup("2"), ": " , round(lm_data()$r2, 2))),
-                                      color = "warning",
-                                      caption = " "
-                                      )
-                                  )
-                     }
-
-
-               # print(paste0("----> current_district: ", model_dist_id()))
-
-               })
-
-             }
-          })
-#
-# # # if "predict" button is clicked and there is a value in the newDataInput text box, make a prediction
-shiny::observeEvent(input$newDataInputButton, {
-
-        # start_district = model_dist_id()
-        #
-        # print(paste0("----> start_district: ", start_district))
-
-        # if an input has been put into text box
-        if (!is.null(input$newDataInput)) {
-
-          print(paste0("input$newDataInput: ",input$newDataInput))
-
-          # # make a prediction with new data from user input
-          # pred <- make_prediction(
-          #   model     = model_obj(),
-          #   predictor = predictor_str(),
-          #   val       = as.numeric(input$newDataInput)
-          # )
-          
-                 # make a prediction with new data from user input
-          pred <- make_mlr_prediction(
-            model     = model_obj(),
-            pred1 = predictor_str1(),
-            pred2 = predictor_str2(),
-            val1       = as.numeric(input$newDataInput),
-            val2  = eddi_val()
-          )
-
-
-          print(paste0("prediction value: ", pred$fitted[1]))
-
-          # update the prediction value Value Box
-          output$predictionValueBox <- flexdashboard::renderValueBox(
-                          flexdashboard::valueBox(
-                            # value = paste0("R2: ", lm_out$r2),
-                            value = paste0("Prediction: ", round(pred$fitted, 0)),
-                            color = "success",
-                            caption = " "
-                            )
-                        )
-
-          # # Update the plot based on the new prediction
-          # output$predictorFitPlot <- shiny::renderPlot({
-          # 
-          #     make_new_predfit_plot(
-          #       df = model_data(),
-          #       # df = lm_out$model_data,
-          #       pred_df = pred
-          #     )
-          #   
-          # })
-        
-# lm_list[["district_01"]]$model
-# predictor lm_list[["district_01"]]$model_data$predictor_long_name[1]
-#               pred <- make_prediction(
-#                    model     = lm_list[["district_01"]]$model,
-#             predictor = lm_list[["district_01"]]$model_data$predictor_long_name[1],
-#             val       = as.numeric(200))
-#           df = lm_list[["district_01"]]$model_data
-# #           
-                 # Update the plot based on the new prediction
-          output$observedPointPlot <- shiny::renderPlot({
-            
-              # make_new_observed_plot(
-              #   df      = model_data(),
-              #   pred_df = pred,
-              #   yaxis   = NULL
-              # )
-            
-            make_new_observed_plot2(
-                df      = model_data(),
-                pred_col = "predictor_val1",
-                pred_df = pred,
-                yaxis = predictor_long_str(),
-                ylim = c(0, 1000)
-            )
-
-          })
-          
-          output$observedEDDIPointPlot <- shiny::renderPlot({
-            
-              # make_new_observed_plot(
-              #   df      = model_data(),
-              #   pred_df = pred,
-              #   yaxis   = NULL
-              # )
-            
-            make_new_observed_plot2(
-                df      = model_data(),
-                pred_col = "predictor_val2",
-                pred_df = pred,
-                yaxis = predictor_long_str2(),
-                ylim = c(-4, 4)
-            )
-
-          })
-        }
-      })
-```
-
-Row
----------------------------------------------------------
-### Observed EDDI
-```{r}
-shiny::plotOutput("observedEDDIPointPlot")
-shinyBS::bsPopover(
-  "observedPointPlot",
-  title     = "Observed call year vs. Observed May 1 EDDI 30 day",
-  content   = "",
-  placement = "top",
-  options   = list(container = "body")
-  )
-tags$style(HTML("
-                .tooltip > .tooltip-inner {
-                width: 400px;
-                color: black;
-                background-color: white;
-                }
-                "))
-```
-
-### Observed response vs. Observed predictors
-```{r}
-shiny::plotOutput("observedPointPlot")
-shinyBS::bsPopover(
-  "observedPointPlot",
-  title     = "Observed call year vs. Observed predictor variables",
-  content   = "The plot has observed average annual call year on the X axis and the observed predictor variable values for a given district. Providing predictor values to the input box on the left panel and pressing the predict button will generate a predicted average call year value based on the predictor value given. A red dot will be added to the scatter plot indicating the value The models explanitory power is explained through the R2 value displayed on the plot and in the value box above the map.",
-  placement = "top",
-  options   = list(container = "body")
-  )
-tags$style(HTML("
-                .tooltip > .tooltip-inner {
-                width: 400px;
-                color: black;
-                background-color: white;
-                }
-                "))
-```
+<!-- ### Observed response vs. Observed predictors -->
+<!-- ```{r} -->
+<!-- # shiny::plotOutput("observedPointPlot") -->
+<!-- # shinyBS::bsPopover( -->
+<!-- #   "observedPointPlot", -->
+<!-- #   title     = "Observed call year vs. Observed predictor variables", -->
+<!-- #   content   = "The plot has observed average annual call year on the X axis and the observed predictor variable values for a given district. Providing predictor values to the input box on the left panel and pressing the predict button will generate a predicted average call year value based on the predictor value given. A red dot will be added to the scatter plot indicating the value The models explanitory power is explained through the R2 value displayed on the plot and in the value box above the map.", -->
+<!-- #   placement = "top", -->
+<!-- #   options   = list(container = "body") -->
+<!-- #   ) -->
+<!-- # tags$style(HTML(" -->
+<!-- #                 .tooltip > .tooltip-inner { -->
+<!-- #                 width: 400px; -->
+<!-- #                 color: black; -->
+<!-- #                 background-color: white; -->
+<!-- #                 } -->
+<!-- #                 ")) -->
+<!-- ``` -->
 
 <!-- ### Predictor vs. Fitted values -->
 <!-- ```{r} -->
