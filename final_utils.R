@@ -1,34 +1,3 @@
-# library(gt)
-# #Example data
-# data <- data.frame(x1 = c(1, 2, 3, 4, 5),
-#                    x2 = c(2, 4, 5, 7, 8),
-#                    y = c(10, 20, 25, 30, 35))
-# 
-# # Fit a linear regression model
-# model <- lm(y ~ x1 + x2, data = data)
-# 
-# # Create a data frame to store the results
-# results <- data.frame(
-#   R_squared = summary(model)$r.squared,
-#   x1_value = 3,  # Example input value for x1
-#   x2_value = 6,  # Example input value for x2
-#   predicted_output = predict(model, newdata = data.frame(x1 = 3, x2 = 6))
-# )
-# 
-# # Create the gt table
-# table <- results %>%
-#   gt() %>%
-#   tab_header(title = "Multiple Linear Regression Results") %>%
-#   cols_label(
-#     R_squared = "R squared",
-#     x1_value = "Input for x1",
-#     x2_value = "Input for x2",
-#     predicted_output = "Predicted Output"
-#   )
-# 
-# # Print the table
-# print(table)
-
 # leaflet basemap w/ HUC4 shape
 model_basemap <- function(shp) {
   
@@ -92,325 +61,6 @@ dist_basemap <- function(shp) {
     )
   
 }
-
-# district <- "06"
-# pred1 = "may_swe"
-# pred2 <- "may_eddi1y"
-# 
-# mod_obj <- lm_list$district_06$model
-# mod_data <- lm_list$district_06$model_data
-# mod_eq <- lm_list$district_06$equation
-# 
-# val1 <- 200
-# val2 <- -1
-# 
-# pred <- make_mlr_prediction(
-#   model     = mod_obj,
-#   pred1 = pred1,
-#   pred2 = pred2,
-#   val1  = val1,
-#   val2  = val2
-# )
-# 
-# pred$equation <- mod_eq
-# # long1 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name
-# # long2 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name2
-# 
-# model_tbl <- 
-#   dplyr::bind_cols(
-#     dplyr::filter(lm_lookup, district == model_dist_id()),
-#     pred
-#   )
-# 
-# df_tbl <- dplyr::tibble(
-#   col1 = c(model_tbl$predictor_long_name,
-#            model_tbl$predictor_long_name2,
-#            "Prediction",
-#            "Equation", 
-#            "R2"
-#   ),
-#   col2 = c(
-#     model_tbl$predictor_val1,
-#     predictor_val2, 
-#     model_tbl$predictor_val2, 
-#     model_tbl$equation, 
-#     rsquared
-#   ),
-#   row_name = c("-", "-", "-", "-", "-"),
-#   group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
-# )
-# 
-# df_tbl %>% 
-#   gt(rowname_col = "row_name", groupname_col = "group") %>% 
-#   tab_header(
-#     # title = md("**My Table Title**")
-#     title = md(paste0(district_name)),
-#     subtitle = md(paste0("**District: ", district_num, "**"))
-#     # title = md(paste0("**District: ", district_num, "**")),
-#     # subtitle = md(paste0(district_name))
-#   ) %>%
-#   tab_style(
-#     style = list(
-#       cell_text(color = "white")  # Change the color to your preferred color
-#     ),
-#     locations = cells_column_labels()
-#   ) %>%
-#   tab_style(
-#     style = cell_text(weight = "bold"),
-#     # locations = cells_column_labels(columns = "group")
-#     # locations = cells_body(columns = group)
-#     locations = cells_row_groups()
-#   )
-# 
-# library(gt)
-# lm_list$district_06$equation
-# 
-# district_name <- model_tbl$district_name
-# district_num <- model_tbl$district
-# 
-# predictor_name1 <- model_tbl$predictor_long_name
-# predictor_name2 <- model_tbl$predictor_long_name2
-# 
-# predictor_val1 <- model_tbl$predictor_val1
-# predictor_val2 <- model_tbl$predictor_val2
-# 
-# rsquared_str <- "R2"
-# rsquared <- as.character(round(lm_list$district_06$r2, 2))
-# 
-# prediction_str <- "Prediction"
-# prediction_val <- as.character(round(model_tbl$fitted, 0))
-# 
-# equation_str <- "Equation"
-# model_eq <- paste0("Call year ~ ", predictor_name1, " + ", predictor_name2)
-# 
-# df_tbl <- dplyr::tibble(
-#   col1 = c(model_tbl$predictor_long_name,
-#            model_tbl$predictor_long_name2,
-#            prediction_str,
-#            rsquared_str),
-#   col2 = c(predictor_val1, predictor_val2, prediction_val, rsquared)
-# )
-# library(sjPlot)
-# 
-# df_tbl <- dplyr::tibble(
-#   col1 = c(model_tbl$predictor_long_name,
-#            model_tbl$predictor_long_name2,
-#            "Prediction",
-#            "Equation", 
-#            "R2"
-#            ),
-#   col2 = c(
-#     model_tbl$predictor_val1,
-#     predictor_val2, 
-#     model_tbl$predictor_val2, 
-#     model_tbl$equation, 
-#     rsquared
-#     ),
-#   row_name = c("-", "-", "-", "-", "-"),
-#   group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
-# )
-# md(paste0("District: ", district_num))
-# 
-# paste0(district_name)
-# df_tbl %>% 
-#   gt(rowname_col = "row_name", groupname_col = "group") %>% 
-#   tab_header(
-#     # title = md("**My Table Title**")
-#     title = md(paste0(district_name)),
-#     subtitle = md(paste0("**District: ", district_num, "**"))
-#     # title = md(paste0("**District: ", district_num, "**")),
-#     # subtitle = md(paste0(district_name))
-#   ) %>%
-#   tab_style(
-#     style = list(
-#       cell_text(color = "white")  # Change the color to your preferred color
-#     ),
-#     locations = cells_column_labels()
-#   ) %>%
-#   tab_style(
-#     style = cell_text(weight = "bold"),
-#     # locations = cells_column_labels(columns = "group")
-#     # locations = cells_body(columns = group)
-#     locations = cells_row_groups()
-#   )
-# 
-# cells_row_groups()
-# 
-# exibble %>% gt()
-# exibble %>% 
-# select(-c(fctr, date, time, datetime)) %>% 
-#   gt(rowname_col = "row", groupname_col = "group") %>% 
-#   sub_missing()
-# exibble |> gt()
-# district <- "06"
-# pred1 = "may_swe"
-# pred2 <- "may_eddi1y"
-# 
-# mod_obj <- lm_list$district_06$model
-# mod_data <- lm_list$district_06$model_data
-# mod_eq <- lm_list$district_06$equation
-# 
-# val1 <- 200
-# val2 <- -1
-# 
-# pred <- make_mlr_prediction(
-#   model     = mod_obj,
-#   pred1 = pred1,
-#   pred2 = pred2,
-#   val1  = val1,
-#   val2  = val2
-# )
-# 
-# pred$equation <- mod_eq
-# # long1 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name
-# # long2 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name2
-# 
-# model_tbl <- 
-#   dplyr::bind_cols(
-#     dplyr::filter(lm_lookup, district == "06"),
-#     pred
-#   )
-# 
-# library(flextable)
-# flextable::flextable(model_tbl)
-# names(model_tbl)
-# 
-# district_name <- model_tbl$district_name
-# district_num <- model_tbl$district
-# 
-# predictor_name1 <- model_tbl$predictor_long_name
-# predictor_name2 <- model_tbl$predictor_long_name2
-# 
-# predictor_val1 <- model_tbl$predictor_val1
-# predictor_val2 <- model_tbl$predictor_val2
-# 
-# rsquared_str <- "R2"
-# rsquared <- as.character(round(lm_list$district_06$r2, 2))
-# 
-# prediction_str <- "Prediction"
-# prediction_val <- as.character(round(model_tbl$fitted, 0))
-# 
-# 
-# df_tbl <- dplyr::tibble(
-#   col1 = c(predictor_name1, predictor_name2,prediction_str, rsquared_str),
-#   col2 = c(predictor_val1, predictor_val2, prediction_val, rsquared)
-# )
-# tbl <- flextable::flextable(df_tbl)
-# tbl
-# pars <- as_paragraph(
-#   as_chunk(c("District:", "District name:")), " ",
-#   as_chunk(c(district_num,
-#              district_name)
-#   )
-# )
-# add_header_row(tbl, values = pars, top = FALSE)
-# 
-# ft_1 <- add_header_row(tbl, values = pars,
-#                        colwidths = c(5, 6), top = FALSE)
-# new_row <- list(
-#   District =district_num,
-#   "District name" = district_name
-# )
-# ft_1 <- flextable::add_header(tbl, values = new_row, top = FALSE)
-# tbl <- flextable::flextable(df_tbl)
-# flextable::add_header()
-# fun <- function(x) {
-#   paste0(
-#     c("min: ", "max: "),
-#     formatC(range(x))
-#   )
-# }
-# new_row <- list(
-#   District =district_num,
-#   "District name" = district_name
-# )
-# flextable::add_header_row()
-# new_row <- list(
-#   Sepal.Length = fun(iris$Sepal.Length),
-#   Sepal.Width =  fun(iris$Sepal.Width),
-#   Petal.Width =  fun(iris$Petal.Width),
-#   Petal.Length = fun(iris$Petal.Length)
-# )
-# ft01 <- fp_text_default(color = "red")
-# ft02 <- fp_text_default(color = "orange")
-# 
-# pars <- as_paragraph(
-#   as_chunk(c("District:", "District name:")), " ",
-#   as_chunk(c(district_num,
-#              district_name)
-#   )
-# )
-# 
-# ft_1 <- flextable(head(mtcars))
-# ft_1 <- add_header_row(ft_1, values = pars,
-#                        colwidths = c(5, 6), top = FALSE)
-# 
-# ft_1 <- flextable(data = head(iris))
-# ft_1 <- add_header(ft_1, values = new_row, top = FALSE)
-# ft_1 <- append_chunks(ft_1, part = "header", i = 2, )
-# ft_1 <- theme_booktabs(ft_1, bold_header = TRUE)
-# ft_1 <- align(ft_1, align = "center", part = "all")
-# ft_1
-# tbl
-# flextable::add_body_row()
-# tbl <- add_header_lines(tbl, "Predictor Variables and Values")
-# # Simulated data for demonstration
-# ft01 <- fp_text_default(color = "red")
-# ft02 <- fp_text_default(color = "orange")
-# 
-# pars <- as_paragraph(
-#   as_chunk(c("(1)", "(2)"), props = ft02), " ",
-#   as_chunk(
-#     c(
-#       "My tailor is rich",
-#       "My baker is rich"
-#     ),
-#     props = ft01
-#   )
-# )
-# 
-# ft_1 <- flextable(head(mtcars))
-# 
-# ft_1
-# ft_1 <- add_body_row(ft_1,
-#                      values = pars,
-#                      colwidths = c(5, 6), top = FALSE
-# )
-# ft_1
-# ft_1 <- add_body_row(ft_1,
-#                      values = pars,
-#                      colwidths = c(3, 8), top = TRUE
-# )
-# ft_1 <- theme_box(ft_1)
-# ft_1
-# library(flextable)
-# # Simulated data for demonstration
-# set.seed(123)
-# data1 <- data.frame(
-#   Variable = c("A", "B", "C"),
-#   Value = c(10, 20, 30)
-# )
-# 
-# data2 <- data.frame(
-#   Category = c("X", "Y", "Z"),
-#   Score = c(85, 92, 78)
-# )
-# rm(tbl1)
-# # Create the first flextable
-# tbl1 <- flextable(df_tbl)
-# 
-# # Set title for the first table
-# tbl1 <- set_flextable_defaults(
-#   font.size = 12
-# )(tbl1)
-# 
-# # Create the second flextable
-# tbl2 <- flextable(data2)
-# 
-# # Set title for the second table
-# tbl2 <- set_flextable_defaults(
-#   font.size = 12
-# )(tbl2)
 
 make_avg_yeartype_rightograph_plot <- function(df, type) {
   
@@ -1643,3 +1293,390 @@ find_month_starts <- function(dates, month = "4") {
   
   return(close)
 }
+
+
+#######################################
+# ----------- TEST GT TABLE -----------
+#######################################
+
+# # # linear regression lookup table
+# lm_lookup <- readr::read_csv("cpo_linear_regression_lookup_v2.csv")
+# district_id <- "06"
+# 
+# df_tbl <- dplyr::tibble(
+#             col1 = c("May 1 SWE",
+#                      "May EDDI 30 day",
+#                      "Prediction",
+#                      "Equation",
+#                      "R²"
+#             ),
+#             col2 = c(
+#               500,
+#               -2,
+#               1950,
+#               paste0("Call year ~ May 1 SWE  + May EDDI 30 day"),
+#               0.65
+#             ),
+#             row_name = c("-", "-", "-", "-", "-"),
+#             group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
+#           )
+# 
+# # model_table <-
+#   df_tbl %>%
+#   gt::gt(rowname_col = "row_name", groupname_col = "group") %>%
+#   gt::tab_header(
+#     # title = md("**My Table Title**")
+#     title = gt::md(paste0(
+#       lm_lookup$district_name[lm_lookup$district == district_id]
+#     )
+#     ),
+#     subtitle = gt::md(paste0("**District: ", district_id, "**"))
+#     # title = md(paste0("**District: ", district_num, "**")),
+#     # subtitle = md(paste0(district_name))
+#   ) %>%
+#   gt::tab_style(
+#     style = list(
+#       gt::cell_text(color = "white")  # Change the color to your preferred color
+#     ),
+#     locations = gt::cells_column_labels()
+#   ) %>%
+#   gt::tab_style(
+#     style = gt::cell_text(weight = "bold"),
+#     # locations = cells_column_labels(columns = "group")
+#     # locations = cells_body(columns = group)
+#     locations = gt::cells_row_groups()
+#   ) %>%
+#   gt::tab_style(
+#     style = gt::cell_fill(color = "gold", alpha = 0.8), # highlight R squared value
+#     locations = gt::cells_body(rows = 5, columns = "col2") # which cell to highlight
+#   ) %>%
+#   gt::tab_style(
+#       style = gt::cell_fill(color = "#3EB489", alpha = 0.7), # highlight R squared value
+#       locations = gt::cells_body(rows = 3, columns = "col2") # which cell to highlight
+#     ) %>% 
+#     gt::tab_style(
+#       style = gt::cell_fill(color = "indianred", alpha = 0.7), # highlight prediction value
+#       locations = gt::cells_body(rows = c(1, 2), columns = "col2") # column and row of cell to highlight
+#     )
+
+
+#######################################
+#######################################
+# district <- "06"
+# pred1 = "may_swe"
+# pred2 <- "may_eddi1y"
+# 
+# mod_obj <- lm_list$district_06$model
+# mod_data <- lm_list$district_06$model_data
+# mod_eq <- lm_list$district_06$equation
+# 
+# val1 <- 200
+# val2 <- -1
+# 
+# pred <- make_mlr_prediction(
+#   model     = mod_obj,
+#   pred1 = pred1,
+#   pred2 = pred2,
+#   val1  = val1,
+#   val2  = val2
+# )
+# 
+# pred$equation <- mod_eq
+# # long1 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name
+# # long2 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name2
+# 
+# model_tbl <- 
+#   dplyr::bind_cols(
+#     dplyr::filter(lm_lookup, district == model_dist_id()),
+#     pred
+#   )
+# 
+# df_tbl <- dplyr::tibble(
+#   col1 = c(model_tbl$predictor_long_name,
+#            model_tbl$predictor_long_name2,
+#            "Prediction",
+#            "Equation", 
+#            "R2"
+#   ),
+#   col2 = c(
+#     model_tbl$predictor_val1,
+#     predictor_val2, 
+#     model_tbl$predictor_val2, 
+#     model_tbl$equation, 
+#     rsquared
+#   ),
+#   row_name = c("-", "-", "-", "-", "-"),
+#   group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
+# )
+# 
+# df_tbl %>% 
+#   gt(rowname_col = "row_name", groupname_col = "group") %>% 
+#   tab_header(
+#     # title = md("**My Table Title**")
+#     title = md(paste0(district_name)),
+#     subtitle = md(paste0("**District: ", district_num, "**"))
+#     # title = md(paste0("**District: ", district_num, "**")),
+#     # subtitle = md(paste0(district_name))
+#   ) %>%
+#   tab_style(
+#     style = list(
+#       cell_text(color = "white")  # Change the color to your preferred color
+#     ),
+#     locations = cells_column_labels()
+#   ) %>%
+#   tab_style(
+#     style = cell_text(weight = "bold"),
+#     # locations = cells_column_labels(columns = "group")
+#     # locations = cells_body(columns = group)
+#     locations = cells_row_groups()
+#   )
+# 
+# library(gt)
+# lm_list$district_06$equation
+# 
+# district_name <- model_tbl$district_name
+# district_num <- model_tbl$district
+# 
+# predictor_name1 <- model_tbl$predictor_long_name
+# predictor_name2 <- model_tbl$predictor_long_name2
+# 
+# predictor_val1 <- model_tbl$predictor_val1
+# predictor_val2 <- model_tbl$predictor_val2
+# 
+# rsquared_str <- "R2"
+# rsquared <- as.character(round(lm_list$district_06$r2, 2))
+# 
+# prediction_str <- "Prediction"
+# prediction_val <- as.character(round(model_tbl$fitted, 0))
+# 
+# equation_str <- "Equation"
+# model_eq <- paste0("Call year ~ ", predictor_name1, " + ", predictor_name2)
+# 
+# df_tbl <- dplyr::tibble(
+#   col1 = c(model_tbl$predictor_long_name,
+#            model_tbl$predictor_long_name2,
+#            prediction_str,
+#            rsquared_str),
+#   col2 = c(predictor_val1, predictor_val2, prediction_val, rsquared)
+# )
+# library(sjPlot)
+# 
+# df_tbl <- dplyr::tibble(
+#   col1 = c(model_tbl$predictor_long_name,
+#            model_tbl$predictor_long_name2,
+#            "Prediction",
+#            "Equation", 
+#            "R2"
+#            ),
+#   col2 = c(
+#     model_tbl$predictor_val1,
+#     predictor_val2, 
+#     model_tbl$predictor_val2, 
+#     model_tbl$equation, 
+#     rsquared
+#     ),
+#   row_name = c("-", "-", "-", "-", "-"),
+#   group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
+# )
+# md(paste0("District: ", district_num))
+# 
+# paste0(district_name)
+# df_tbl %>% 
+#   gt(rowname_col = "row_name", groupname_col = "group") %>% 
+#   tab_header(
+#     # title = md("**My Table Title**")
+#     title = md(paste0(district_name)),
+#     subtitle = md(paste0("**District: ", district_num, "**"))
+#     # title = md(paste0("**District: ", district_num, "**")),
+#     # subtitle = md(paste0(district_name))
+#   ) %>%
+#   tab_style(
+#     style = list(
+#       cell_text(color = "white")  # Change the color to your preferred color
+#     ),
+#     locations = cells_column_labels()
+#   ) %>%
+#   tab_style(
+#     style = cell_text(weight = "bold"),
+#     # locations = cells_column_labels(columns = "group")
+#     # locations = cells_body(columns = group)
+#     locations = cells_row_groups()
+#   )
+# 
+# cells_row_groups()
+# 
+# exibble %>% gt()
+# exibble %>% 
+# select(-c(fctr, date, time, datetime)) %>% 
+#   gt(rowname_col = "row", groupname_col = "group") %>% 
+#   sub_missing()
+# exibble |> gt()
+# district <- "06"
+# pred1 = "may_swe"
+# pred2 <- "may_eddi1y"
+# 
+# mod_obj <- lm_list$district_06$model
+# mod_data <- lm_list$district_06$model_data
+# mod_eq <- lm_list$district_06$equation
+# 
+# val1 <- 200
+# val2 <- -1
+# 
+# pred <- make_mlr_prediction(
+#   model     = mod_obj,
+#   pred1 = pred1,
+#   pred2 = pred2,
+#   val1  = val1,
+#   val2  = val2
+# )
+# 
+# pred$equation <- mod_eq
+# # long1 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name
+# # long2 <- dplyr::filter(lm_lookup, district == "06")$predictor_long_name2
+# 
+# model_tbl <- 
+#   dplyr::bind_cols(
+#     dplyr::filter(lm_lookup, district == "06"),
+#     pred
+#   )
+# 
+# library(flextable)
+# flextable::flextable(model_tbl)
+# names(model_tbl)
+# 
+# district_name <- model_tbl$district_name
+# district_num <- model_tbl$district
+# 
+# predictor_name1 <- model_tbl$predictor_long_name
+# predictor_name2 <- model_tbl$predictor_long_name2
+# 
+# predictor_val1 <- model_tbl$predictor_val1
+# predictor_val2 <- model_tbl$predictor_val2
+# 
+# rsquared_str <- "R2"
+# rsquared <- as.character(round(lm_list$district_06$r2, 2))
+# 
+# prediction_str <- "Prediction"
+# prediction_val <- as.character(round(model_tbl$fitted, 0))
+# 
+# 
+# df_tbl <- dplyr::tibble(
+#   col1 = c(predictor_name1, predictor_name2,prediction_str, rsquared_str),
+#   col2 = c(predictor_val1, predictor_val2, prediction_val, rsquared)
+# )
+# tbl <- flextable::flextable(df_tbl)
+# tbl
+# pars <- as_paragraph(
+#   as_chunk(c("District:", "District name:")), " ",
+#   as_chunk(c(district_num,
+#              district_name)
+#   )
+# )
+# add_header_row(tbl, values = pars, top = FALSE)
+# 
+# ft_1 <- add_header_row(tbl, values = pars,
+#                        colwidths = c(5, 6), top = FALSE)
+# new_row <- list(
+#   District =district_num,
+#   "District name" = district_name
+# )
+# ft_1 <- flextable::add_header(tbl, values = new_row, top = FALSE)
+# tbl <- flextable::flextable(df_tbl)
+# flextable::add_header()
+# fun <- function(x) {
+#   paste0(
+#     c("min: ", "max: "),
+#     formatC(range(x))
+#   )
+# }
+# new_row <- list(
+#   District =district_num,
+#   "District name" = district_name
+# )
+# flextable::add_header_row()
+# new_row <- list(
+#   Sepal.Length = fun(iris$Sepal.Length),
+#   Sepal.Width =  fun(iris$Sepal.Width),
+#   Petal.Width =  fun(iris$Petal.Width),
+#   Petal.Length = fun(iris$Petal.Length)
+# )
+# ft01 <- fp_text_default(color = "red")
+# ft02 <- fp_text_default(color = "orange")
+# 
+# pars <- as_paragraph(
+#   as_chunk(c("District:", "District name:")), " ",
+#   as_chunk(c(district_num,
+#              district_name)
+#   )
+# )
+# 
+# ft_1 <- flextable(head(mtcars))
+# ft_1 <- add_header_row(ft_1, values = pars,
+#                        colwidths = c(5, 6), top = FALSE)
+# 
+# ft_1 <- flextable(data = head(iris))
+# ft_1 <- add_header(ft_1, values = new_row, top = FALSE)
+# ft_1 <- append_chunks(ft_1, part = "header", i = 2, )
+# ft_1 <- theme_booktabs(ft_1, bold_header = TRUE)
+# ft_1 <- align(ft_1, align = "center", part = "all")
+# ft_1
+# tbl
+# flextable::add_body_row()
+# tbl <- add_header_lines(tbl, "Predictor Variables and Values")
+# # Simulated data for demonstration
+# ft01 <- fp_text_default(color = "red")
+# ft02 <- fp_text_default(color = "orange")
+# 
+# pars <- as_paragraph(
+#   as_chunk(c("(1)", "(2)"), props = ft02), " ",
+#   as_chunk(
+#     c(
+#       "My tailor is rich",
+#       "My baker is rich"
+#     ),
+#     props = ft01
+#   )
+# )
+# 
+# ft_1 <- flextable(head(mtcars))
+# 
+# ft_1
+# ft_1 <- add_body_row(ft_1,
+#                      values = pars,
+#                      colwidths = c(5, 6), top = FALSE
+# )
+# ft_1
+# ft_1 <- add_body_row(ft_1,
+#                      values = pars,
+#                      colwidths = c(3, 8), top = TRUE
+# )
+# ft_1 <- theme_box(ft_1)
+# ft_1
+# library(flextable)
+# # Simulated data for demonstration
+# set.seed(123)
+# data1 <- data.frame(
+#   Variable = c("A", "B", "C"),
+#   Value = c(10, 20, 30)
+# )
+# 
+# data2 <- data.frame(
+#   Category = c("X", "Y", "Z"),
+#   Score = c(85, 92, 78)
+# )
+# rm(tbl1)
+# # Create the first flextable
+# tbl1 <- flextable(df_tbl)
+# 
+# # Set title for the first table
+# tbl1 <- set_flextable_defaults(
+#   font.size = 12
+# )(tbl1)
+# 
+# # Create the second flextable
+# tbl2 <- flextable(data2)
+# 
+# # Set title for the second table
+# tbl2 <- set_flextable_defaults(
+#   font.size = 12
+# )(tbl2)

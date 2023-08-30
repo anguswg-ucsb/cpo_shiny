@@ -98,15 +98,163 @@ make_observed_value_plot <- function(df,
   return(observed_plot)
   
 
-  }
+}
 
+# ############################################################################
+# ################## ADDING MISSING DISTRICT 9 data to RAW ###################
+# ############################################################################
+
+wrs <- readr::read_csv("detrended_all_data_final_v2.csv")
+raw <- readr::read_csv("/Users/anguswatters/Downloads/cdss_raw_daily_call_data_combined.csv")
+
+wrs %>% 
+  dplyr::filter(district == "09") %>% 
+  .$wdid %>% 
+  unique()
+
+# raw$analysis_date %>% unique() %>% max()
+extra_wdids <- c("0902107", "0904288", "0901591", "0905632")
+
+extra_calls <- lapply(1:length(extra_wdids), function(i) {
+  
+  message(i, "/", length(extra_wdids))
+  
+  calls <- get_calls2(
+    wdid = extra_wdids[i],
+    start_date = "1970-01-01",
+    end_date = "2023-07-01"
+  )
+  
+  calls 
+  
+})
+
+extra_calls2 <- 
+  extra_calls %>% 
+  dplyr::bind_rows() %>% 
+  dplyr::mutate(
+    district = 9
+  ) %>% 
+  dplyr::tibble()
+
+readr::write_csv(extra_calls2, "/Users/anguswatters/Desktop/cpo_data/misc_data/cdss_raw_daily_call_data_district_09.csv")
+
+# find common columns
+common <- names(extra_calls2)[names(extra_calls2) %in% names(raw)]
+
+# match column types
+extra_calls2[common] <- lapply(common, function(x) {
+  match.fun(
+    paste0("as.", class(raw[[x]])[1]))(extra_calls2[[x]])
+})
+
+# bind district 9 data with the rest of the raw data
+raw <- dplyr::bind_rows(raw, extra_calls2)
+
+readr::write_csv(raw, "/Users/anguswatters/Desktop/cpo_data/call_data/cdss_raw_daily_call_data_combined_v2.csv")
+
+# ###########################################################################
+# ################### FIX DISTRICT 5 YEAR TYPE DATAFRAME ####################
+# ###########################################################################
+
+# water year type by district and year
+yeartypes <- readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/water_district_yeartype.csv") %>% 
+  dplyr::mutate(
+    district = ifelse(district < 10, paste0("0", district), as.character(district))
+  )
+
+# replace district 5 data in "yeartypes" with this data
+fixed_yeartypes <-
+  readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/mainstem_yeartype.csv") %>% 
+  dplyr::select(year, type) %>% 
+  dplyr::mutate(district = "05") %>% 
+  dplyr::relocate(district)
+
+out_yeartypes <- dplyr::bind_rows(
+  dplyr::filter(yeartypes, district != 5), 
+  fixed_yeartypes
+  ) %>% 
+  dplyr::rename(year_type = type)
+
+readr::write_csv(out_yeartypes, "/Users/anguswatters/Desktop/cpo_data/year_type/water_district_yeartype_v2.csv")
+
+# ############################################################################
+# ################### CREATE YEAR TYPES AVERAGE DATAFRAME ####################
+# ############################################################################
+# rm(out_yeartypes, yeartypes, fixed_yeartypes)
+
+# water year type by district and year
+yeartypes <- readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/water_district_yeartype_v2.csv")
+
+raw <- readr::read_csv("/Users/anguswatters/Desktop/cpo_data/call_data/cdss_raw_daily_call_data_combined_v2.csv")
+# tmp_raw <- raw %>% 
+#   dplyr::filter(district == 5)
+# 
+# tmp_calls <- aggreg_weekly_wdid(tmp_raw)
+
+wdid_calls <- aggreg_weekly_wdid(raw)
+
+wdid_calls <- 
+  wdid_calls %>% 
+  dplyr::left_join(
+    dplyr::mutate(
+      yeartypes, 
+      year = as.character(year)
+      ),
+    by = c("district", "year")
+  ) 
+
+readr::write_csv(wdid_calls, "/Users/anguswatters/Desktop/cpo_data/year_type/weekly_avg_district_call_data.csv")
+
+# ############################################################################
+# ################ SUMMARIZE YEAR TYPE DATA FOR DASHBOARD ####################
+# ############################################################################
+
+wdid_calls <- readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/weekly_avg_district_call_data.csv")
+
+wdid_calls
+
+avg_yeartype <- 
+  wdid_calls %>% 
+  aggreg_by_year_type() %>%
+  dplyr::mutate(
+    year_type = dplyr::case_when(
+      year_type == "average" ~ "Average",
+      year_type == "wet" ~ "Wet",
+      year_type == "dry" ~ "Dry"
+    )
+  ) %>% 
+  na.omit()
+
+
+saveRDS(avg_yeartype, "avg_weekly_calls_by_yeartype2.rds")
+tmp <- readRDS("avg_weekly_calls_by_yeartype.rds")
+tmp %>% 
+  dplyr::filter(district == 5)
+
+avg_yeartype %>% 
+  dplyr::filter(district == "05") 
+
+tmp %>% 
+  dplyr::filter(district == 5) %>% 
+  na.omit()
+avg_yeartype %>% 
+  dplyr::filter(district == "05") %>% 
+  na.omit()
+
+avg_yeartype %>% 
+  dplyr::filter(district == "09") %>% 
+  ggplot2::ggplot() +
+  ggplot2::geom_line(ggplot2::aes(x = week, y = priority_date, color = year_type))
+  
 # ############################################################################
 # ############################################################################
 
-wrs <- readr::read_csv("data/detrended_all_data_final.csv")
+wrs <- readr::read_csv("detrended_all_data_final_v2.csv")
 raw <- readr::read_csv("/Users/anguswatters/Downloads/cdss_raw_daily_call_data_combined.csv")
 
 wdid_calls <- aggreg_weekly_wdid(raw)
+wdid_calls$district %>% unique()
 wdid_calls$analysis_wdid %>% unique()
 wdid_id <- "0604255"
 
@@ -167,7 +315,21 @@ call_subset
 wdid_calls$analysis_wdid %>% unique()
 weekly_calls$district %>% unique()
 
+weekly_calls <- 
+  raw %>% 
+  aggreg_weekly_wdid(omit_na = F) %>% 
+  dplyr::left_join(
+    dplyr::mutate(
+      year_types, 
+      year = as.character(year), 
+      district = ifelse(district < 10, paste0("0", district), as.character(district))
+    ),
+    by = c("year", "district")
+  )
+avg_yeartype
 
+readr::write_csv(weekly_calls, "/Users/anguswatters/Desktop/cpo_data/weekly_wdid_call_data_with_yeartypes.csv")
+year_types <- readr::read_csv("/Users/anguswatters/Downloads/water_district_yeartype.csv")
 
 weekly_calls <- aggreg_weekly_district(raw)
 avg_yeartype <-  aggreg_by_year_type(weekly_calls) %>%

@@ -825,6 +825,42 @@ get_calls <- function(
   
 }
 
+# Define function to get call data
+get_calls2 <- function(
+    wdid,
+    start_date,
+    end_date,
+    api_key = NULL
+) {
+  
+  # call_df <- lapply(1:nrow(wdid_df), function(i) {
+  #
+  #   message(paste0(i, "/", nrow(wdid_df)))
+  
+  # GET request to CDSS API
+  tryCatch({
+    calls <- cdssr::get_call_analysis_wdid(
+      wdid       = wdid,
+      # admin_no   = wdid_df$admin_number[i],
+      admin_no   = "99999.00000",
+      start_date = start_date,
+      end_date   = end_date,
+      api_key    = api_key
+    )
+
+    return(calls)
+  }, error = function(e) {
+    
+    return(NULL)
+  })
+  
+  # }) %>%
+  #   dplyr::bind_rows()
+  
+  return(calls)
+  
+}
+
 make_calls_plot <- function(df) {
   
   # replace NA dates with the max priority date on record
