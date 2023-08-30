@@ -1073,17 +1073,21 @@ shiny::observeEvent(model_dist_id(), {
                     #       ylim     = c(-4, 4)
                     #       )
                     #     })
-
-                    # Render new R Squared value into value box
-                    output$rSquaredValueBox <- flexdashboard::renderValueBox(
-                                    flexdashboard::valueBox(
-                                      # value = paste0("R2: ", lm_out$r2),
-                                      # value = paste0("R2: ", lm_data()$r2),
-                                      value =  HTML(paste0("R",tags$sup("2"), ": " , round(lm_data()$r2, 2))),
-                                      color = "warning",
-                                      caption = " "
-                                      )
-                                  )
+                       
+                    #######################################################################
+                    # -------------------- RENDER R-SQUARED VALUE BOX  --------------------
+                    #######################################################################
+                       
+                    # # Render new R Squared value into value box
+                    # output$rSquaredValueBox <- flexdashboard::renderValueBox(
+                    #                 flexdashboard::valueBox(
+                    #                   # value = paste0("R2: ", lm_out$r2),
+                    #                   # value = paste0("R2: ", lm_data()$r2),
+                    #                   value =  HTML(paste0("R",tags$sup("2"), ": " , round(lm_data()$r2, 2))),
+                    #                   color = "warning",
+                    #                   caption = " "
+                    #                   )
+                    #               )
                      }
 
 
@@ -1124,13 +1128,7 @@ shiny::observeEvent(input$newDataInputButton, {
           
           ##########################################
           ##########################################
-          
-            # model_tbl <- 
-            #   dplyr::bind_cols(
-            #     dplyr::filter(lm_lookup, district == model_dist_id()),
-            #     pred
-            #   )
-          
+
             # paste0("Call year ~ ", predictor_long_str(), " + ", predictor_long_str2())
             df_tbl <- dplyr::tibble(
               col1 = c(predictor_long_str(),
@@ -1197,28 +1195,28 @@ shiny::observeEvent(input$newDataInputButton, {
           ##########################################
           ##########################################
           
-          # pred$predictor_long_name1 <- lm_l
-          # make a prediction with new data from user input
-          pred <- make_mlr_prediction(
-            model     = model_obj(),
-            pred1 = predictor_str1(),
-            pred2 = predictor_str2(),
-            val1       = as.numeric(input$newDataInput),
-            val2  = eddi_val()
-          )
+          # # pred$predictor_long_name1 <- lm_l
+          # # make a prediction with new data from user input
+          # pred <- make_mlr_prediction(
+          #   model     = model_obj(),
+          #   pred1 = predictor_str1(),
+          #   pred2 = predictor_str2(),
+          #   val1       = as.numeric(input$newDataInput),
+          #   val2  = eddi_val()
+          # )
 
 
           print(paste0("prediction value: ", pred$fitted[1]))
 
-          # update the prediction value Value Box
-          output$predictionValueBox <- flexdashboard::renderValueBox(
-                          flexdashboard::valueBox(
-                            # value = paste0("R2: ", lm_out$r2),
-                            value = paste0("Prediction: ", round(pred$fitted, 0)),
-                            color = "success",
-                            caption = " "
-                            )
-                        )
+          # # update the prediction value Value Box
+          # output$predictionValueBox <- flexdashboard::renderValueBox(
+          #                 flexdashboard::valueBox(
+          #                   # value = paste0("R2: ", lm_out$r2),
+          #                   value = paste0("Prediction: ", round(pred$fitted, 0)),
+          #                   color = "success",
+          #                   caption = " "
+          #                   )
+          #               )
 
           # # Update the plot based on the new prediction
           # output$predictorFitPlot <- shiny::renderPlot({
@@ -1354,53 +1352,53 @@ output$eddiValueBox <- flexdashboard::renderValueBox(
 )
 ```
 
-###
-```{r}
-# # output prediction value box UI
-flexdashboard::valueBoxOutput("predictionValueBox")
-```
+<!-- ### -->
+<!-- ```{r} -->
+<!-- # # output prediction value box UI -->
+<!-- flexdashboard::valueBoxOutput("predictionValueBox") -->
+<!-- ``` -->
 
-```{r context="server"}
-# # Render the prediction value Value Box
-output$predictionValueBox <- flexdashboard::renderValueBox(
-  flexdashboard::valueBox(
-    value = paste0("Prediction: "),
-    color = "success",
-    caption = " "
-    )
-)
-```
+<!-- ```{r context="server"} -->
+<!-- # # Render the prediction value Value Box -->
+<!-- output$predictionValueBox <- flexdashboard::renderValueBox( -->
+<!--   flexdashboard::valueBox( -->
+<!--     value = paste0("Prediction: "), -->
+<!--     color = "success", -->
+<!--     caption = " " -->
+<!--     ) -->
+<!-- ) -->
+<!-- ``` -->
 
-###
-```{r}
-flexdashboard::valueBoxOutput("rSquaredValueBox")
-# shinyBS::bsPopover(
-#   "rSquaredValueBox",
-#   title     = HTML(paste0("R",tags$sup("2"))),
-#   content   = "R-squared is a statistical measure that represents the proportion of the variance for a dependent variable that’s explained by an independent variable in a regression model.",
-#   placement = "bottom",
-#   options   = list(container = "body")
-#   )
-# tags$style(HTML("
-#                 .tooltip > .tooltip-inner {
-#                 width: 400px;
-#                 color: black;
-#                 background-color: white;
-#                 }
-#                 "))
-```
+<!-- ### -->
+<!-- ```{r} -->
+<!-- flexdashboard::valueBoxOutput("rSquaredValueBox") -->
+<!-- # shinyBS::bsPopover( -->
+<!-- #   "rSquaredValueBox", -->
+<!-- #   title     = HTML(paste0("R",tags$sup("2"))), -->
+<!-- #   content   = "R-squared is a statistical measure that represents the proportion of the variance for a dependent variable that’s explained by an independent variable in a regression model.", -->
+<!-- #   placement = "bottom", -->
+<!-- #   options   = list(container = "body") -->
+<!-- #   ) -->
+<!-- # tags$style(HTML(" -->
+<!-- #                 .tooltip > .tooltip-inner { -->
+<!-- #                 width: 400px; -->
+<!-- #                 color: black; -->
+<!-- #                 background-color: white; -->
+<!-- #                 } -->
+<!-- #                 ")) -->
+<!-- ``` -->
 
-```{r context="server"}
-# # flexdashboard::valueBox(value = model_dist_id())
-output$rSquaredValueBox <- flexdashboard::renderValueBox(
-  flexdashboard::valueBox(
-    # value = paste0("R2: "),
-    value =  HTML(paste0("R",tags$sup("2"), ": ")),
-    color = "warning",
-    caption = " "
-    )
-)
-```
+<!-- ```{r context="server"} -->
+<!-- # # flexdashboard::valueBox(value = model_dist_id()) -->
+<!-- output$rSquaredValueBox <- flexdashboard::renderValueBox( -->
+<!--   flexdashboard::valueBox( -->
+<!--     # value = paste0("R2: "), -->
+<!--     value =  HTML(paste0("R",tags$sup("2"), ": ")), -->
+<!--     color = "warning", -->
+<!--     caption = " " -->
+<!--     ) -->
+<!-- ) -->
+<!-- ``` -->
 
 <!-- Row -->
 <!-- --------------------------------------------------------- -->
