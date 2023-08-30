@@ -27,7 +27,7 @@ library(gt)
 
 # Mapping packages
 library(leaflet)
-library(leafem)
+# library(leafem)
 
 # geospatial and climate data
 library(terra)
@@ -35,6 +35,7 @@ library(climateR)
 
 # library(shinyjs)
 library(shinyBS)
+# library(bsplus)
 
 # Load function data_utils.R file
 source('final_utils.R')
@@ -42,7 +43,7 @@ source('final_utils.R')
 
 ```{r context="server"}
 # shinyjs::useShinyjs(rmd = TRUE)
-
+bsplus::use_bs_tooltip()
 # # water rights data
 # water_rights <- readr::read_csv("detrended_all_data_final_v2.csv")
 
@@ -501,7 +502,7 @@ predictor_label <- shiny::reactive({
   # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
   if(is.null(predictor_long_str())) {
     
-    return("Select a district to make a prediction..")
+    return(paste0("Enter a predictor value after selecting a district..."))
     
   } else {
     
@@ -523,6 +524,18 @@ Right-o-graph
 
 Inputs {.sidebar}
 ---------------------------------------------------------
+<strong>Click on a district on the map to begin.</strong>
+
+<br>
+
+In Colorado, when a shortage occurs, senior water rights-holders may place a “call” on the river. Every water rights user has a priority date, or the date the water right was established. The year of that right is called a “call year”. The plot to the right shows the average call year of the senior water rights-holder who placed a “call” on the river for every day of the year. 
+
+The data comes from 34 individual WDIDs across 12 water districts in Colorado's South Platte River basin. WDIDs were selected by locating the most upstream water users along the mainstem rivers within each water district.  
+
+Depending on the amount of water in the river, the average year of the senior water rights-holder placing the call on the river changes. Select the hydrologic year type (Dry, Average, or Wet) below to highlight the corresponding line on the graph. 
+
+<br>
+
 ```{r}
 shiny::radioButtons(
   inputId  = "radioYearTypeButtons",
@@ -536,19 +549,21 @@ shiny::radioButtons(
   )
 ```
 
-<br>
-
-- Add text describing how the average weekly call value is displayed and calculated in the bottom plot
-
-- Add text describing wet, dry and average year types here
-
-- ADD POPOVERS/TOOLTIPS TO EACH PANEL AS WELL
-
 Column {data-width=500}
 ---------------------------------------------------------
 ### District
 ```{r}
-flexdashboard::valueBoxOutput("districtValueBoxMap1")
+# 
+# shinyjs::onevent("hover", id = "districtValueBoxMap1")
+#  onclick('clickdiv', showModal(modalDialog(
+#     title = "Your title",
+#     renderDataTable(data)
+#   )))
+
+# flexdashboard::valueBoxOutput("districtValueBoxMap1") %>% 
+#   bsplus::bs_embed_tooltip(title = "I'm a tooltip", placement = "bottom")
+
+flexdashboard::valueBoxOutput("districtValueBoxMap1") 
 shinyBS::bsPopover(
   "districtValueBoxMap1",
   title     = "",
@@ -584,6 +599,7 @@ shiny::observeEvent(dist_id(), {
 
       # Public Safety value box server
       output$districtValueBoxMap1 <- flexdashboard::renderValueBox(
+
         flexdashboard::valueBox(
           value = paste0("District: ", dist_id()),
           color = "primary",
@@ -596,7 +612,7 @@ shiny::observeEvent(dist_id(), {
 
 ###
 ```{r}
-shiny::plotOutput("callDatePlot")
+shiny::plotOutput("callDatePlot") 
 shinyBS::bsPopover(
   "callDatePlot",
   title     = "Annual historic call dates by week",
@@ -611,11 +627,17 @@ tags$style(HTML("
                 background-color: white;
                 }
                 "))
+
+# shiny::plotOutput("callDatePlot") %>% 
+   # bsplus::bs_embed_tooltip(
+   #   title = "After clicking on a district on the map above, a lineplot showing the selected district's historic average call date (Y axis) for a given week of the year (X axis). The 3 lines each represent a different average value calculated for across all years for a given year type (dry, average, and wet). Year types were calculated by creating terciles from the annual total streamflow discharge volume at a representative USGS gage for each district.", 
+   #   placement = "left"
+   #   )
 ```
 
 Column {data-width=500}
 ---------------------------------------------------------
-###
+### 
 ```{r}
 # District leaflet map output
 leaflet::leafletOutput("baseMap")
@@ -623,7 +645,7 @@ shinyBS::bsPopover(
   "baseMap",
   title     = "Colorado South Platte Water Districts",
   content   = "Click on a water district to view annual historical call dates for a given week",
-  placement = "bottom",
+  placement = "left",
   options   = list(container = "body")
   )
 tags$style(HTML("
@@ -779,7 +801,7 @@ shiny::observeEvent(input$baseMap_shape_click, {
                           )
 
                         })
-                     
+                     # shinyBS::addPopover()
                        }
                })
              }
@@ -791,37 +813,11 @@ Regression models
 
 Inputs {.sidebar}
 ---------------------------------------------------------
+Use the dropdown menu below to select a water district from the map on the right.
+
+
+
 ```{r, context = "server"}
-# ifelse(
-#   is.null(predictor_str()),
-#   "Select a district to make a provide SWE/NRCS Forecast data...",
-#   paste0("Enter ", predictor_str(), " value...")
-#        )
-# shiny::numericInput(
-#   inputId = "districtInput",
-#                   label   = "Select a district",
-#                   value = NULL
-#                   )
-# shiny::selectInput(
-#    inputId = "districtInput",
-#    label   = "Select a district",
-#    choices = c(
-#               # "" = NA,
-#               "1" = "01", 
-#               "2" = "02", 
-#               "3" = "03", 
-#               "4" = "04", 
-#               "5" = "05", 
-#               "6" = "06",
-#               "7" = "07",
-#               "8" = "08",
-#               "9" = "09",
-#               "23" = "23",
-#               "64" = "64",
-#               "80" = "80"
-#               ),
-#    selected = NULL
-#    )
 shiny::selectizeInput(
   inputId = "districtInput",
   label   = "Select a district",
@@ -843,7 +839,18 @@ shiny::selectizeInput(
   multiple = TRUE, 
   options = list(maxItems = 1)
   ) 
+```
 
+The top performing predictor variable was selected for each district, thus when you select a district from the above menu, you will be prompted to enter a value for one of the following 3 predictor variables: 
+- May 1st SWE
+- NRCS May 1 Apr-Sep forecast
+- Peak SWE 
+
+<br>
+
+Provide one of these variables in the text box below and press the "Predict" button to generate a predicted average summer call year value. The model parameters and perforamnce can be seen in the table on the right hand side of the page.
+
+```{r, context = "server"}
 shiny::textInput(inputId = "newDataInput", 
                  # label = predictor_label(),
                  label   = "...",
@@ -864,14 +871,6 @@ shiny::observeEvent(predictor_label(), {
 ```
 
 <br>
-
-- ADD TEXT DESCRIBING MODELING PROCESS AND SPECIFIC VARIABLES USED
-
-- Predictor vs Fitted Values is a plot showing the values used to predict average call year (X axis) and the fitted average call year values (Y axis)
-
-- After clicking on a district, you will be shown the R squared value in the middle value box on the top row, and if you type a SWE or NRCS Forecast value into the input box above and press the "Predict" button, a predicted average call year value will be shown in the top right "Predicted" value box
-
-- ADD POPOVERS/TOOLTIPS TO EACH PANEL AS WELL
 
 Column {data-width=500}
 ---------------------------------------------------------
@@ -926,20 +925,20 @@ shiny::observeEvent(model_dist_id(), {
 ### Model Map
 ```{r}
 leaflet::leafletOutput("modelBaseMap")
-# shinyBS::bsPopover(
-#   "modelBaseMap",
-#   title     = "Colorado South Platte Water Districts",
-#   content   = "Use the selection drop down in the left panel to select and highlight a water district on the map",
-#   placement = "bottom",
-#   options   = list(container = "body")
-#   )
-# tags$style(HTML("
-#                 .tooltip > .tooltip-inner {
-#                 width: 400px;
-#                 color: black;
-#                 background-color: white;
-#                 }
-#                 "))
+shinyBS::bsPopover(
+  "modelBaseMap",
+  title     = "Colorado South Platte Water Districts",
+  content   = "Use the selection drop down in the left panel to select and highlight a water district on the map",
+  placement = "top",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
 ```
 
 ```{r context="server"}

@@ -4,7 +4,7 @@ model_basemap <- function(shp) {
   leaflet::leaflet() %>%
     leaflet::addProviderTiles(providers$Esri.NatGeoWorldMap, group = "Nat Geo Topographic2") %>%
     leaflet::addScaleBar("bottomleft") %>%
-    leafem::addMouseCoordinates() %>%
+    # leafem::addMouseCoordinates() %>%
     leaflet::setView(lng = -105.6, lat = 39.7, zoom = 7) %>% 
     leaflet::addPolygons(
       data = shp,
@@ -36,7 +36,7 @@ dist_basemap <- function(shp) {
   leaflet::leaflet() %>%
     leaflet::addProviderTiles(providers$Esri.NatGeoWorldMap, group = "Nat Geo Topographic2") %>%
     leaflet::addScaleBar("bottomleft") %>%
-    leafem::addMouseCoordinates() %>%
+    # leafem::addMouseCoordinates() %>%
     leaflet::setView(lng = -105.6, lat = 39.7, zoom = 7) %>% 
     leaflet::addPolygons(
       data = shp,
@@ -1293,7 +1293,6 @@ find_month_starts <- function(dates, month = "4") {
   
   return(close)
 }
-
 
 #######################################
 # ----------- TEST GT TABLE -----------

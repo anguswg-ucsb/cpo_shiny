@@ -52,7 +52,18 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
     padding: 0;
 }
     
-    
+.popover {
+  display: none;
+  position: absolute;
+  background-color: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  z-index: 1000;
+}
+
+.show {
+  display: block !important;
+}    
 
 .shiny-input-container label {
     font-size: 14px;
