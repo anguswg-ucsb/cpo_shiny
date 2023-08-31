@@ -1,13 +1,13 @@
-district,district_name,predictor_name,predictor_long_name,predictor_name2,predictor_long_name2
-01,SP – Denver Gage to Greeley,may_fx_apr_to_sep,NRCS May 1 Apr-Sep forecast,may_eddi30d,May 1 EDDI 30 day
-02,SP – Greeley to Balzac,may_swe,May 1 SWE,may_eddi30d,May 1 EDDI 30 day
-03,Cache La Poudre River,may_swe,May 1 SWE,may_eddi1y,May EDDI 1yr
-04,Big Thompson River,may_fx_apr_to_sep,NRCS May 1 Apr-Sep forecast,may_eddi1y,May EDDI 1yr
-05,St. Vrain Creek,peak_swe,Peak SWE,may_eddi1y,May EDDI 1yr
-06,Boulder Creek,may_swe,May 1 SWE,may_eddi1y,May EDDI 1yr
-07,Clear Creek,may_fx_apr_to_sep,NRCS May 1 Apr-Sep forecast,may_eddi1y,May EDDI 1yr
-08,SP – Cheesman to Denver Gage,may_fx_apr_to_sep,NRCS May 1 Apr-Sep forecast,may_eddi30d,May 1 EDDI 30 day
-09,Bear Creek,may_swe,May 1 SWE,may_eddi1y,May EDDI 1yr
-23,Upper South Platte,may_fx_apr_to_sep,NRCS May 1 Apr-Sep forecast,may_eddi1y,May EDDI 1yr
-64,SP – Balzac to Stateline,may_fx_apr_to_sep,NRCS May 1 Apr-Sep forecast,may_eddi30d,May 1 EDDI 30 day
-80,North Fork of the South Platte,may_swe,May 1 SWE,may_eddi30d,May 1 EDDI 30 day
+district,district_name,predictor_name,predictor_long_name,predictor_name2,predictor_long_name2,units1,units2
+01,SP – Denver Gage to Greeley,may_fx_apr_to_sep,May 1 Apr-Sep 50% forecast,may_eddi30d,May 1 EDDI 30-day,kaf,unitless
+02,SP – Greeley to Balzac,may_swe,May 1 SWE,may_eddi30d,May 1 EDDI 30-day,mm,unitless
+03,Cache La Poudre River,may_swe,May 1 SWE,may_eddi1y,May EDDI 1yr,mm,unitless
+04,Big Thompson River,may_fx_apr_to_sep,May 1 Apr-Sep 50% forecast,may_eddi1y,May EDDI 1yr,kaf,unitless
+05,St. Vrain Creek,peak_swe,Peak SWE,may_eddi1y,May EDDI 1yr,mm,unitless
+06,Boulder Creek,may_swe,May 1 SWE,may_eddi1y,May EDDI 1yr,mm,unitless
+07,Clear Creek,may_fx_apr_to_sep,May 1 Apr-Sep 50% forecast,may_eddi1y,May EDDI 1yr,kaf,unitless
+08,SP – Cheesman to Denver Gage,may_fx_apr_to_sep,May 1 Apr-Sep 50% forecast,may_eddi30d,May 1 EDDI 30-day,kaf,unitless
+09,Bear Creek,may_swe,May 1 SWE,may_eddi1y,May EDDI 1yr,mm,unitless
+23,Upper South Platte,may_fx_apr_to_sep,May 1 Apr-Sep 50% forecast,may_eddi1y,May EDDI 1yr,kaf,unitless
+64,SP – Balzac to Stateline,may_fx_apr_to_sep,May 1 Apr-Sep 50% forecast,may_eddi30d,May 1 EDDI 30-day,kaf,unitless
+80,North Fork of the South Platte,may_swe,May 1 SWE,may_eddi30d,May 1 EDDI 30-day,mm,unitless

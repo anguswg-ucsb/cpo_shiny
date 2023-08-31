@@ -100,9 +100,9 @@ saveRDS(
 ##################################################################################
 
 # linear regression lookup table
-lm_lookup <- readr::read_csv("cpo_linear_regression_lookup_v2.csv")
-# lm_lookup <- readr::read_csv("cpo_linear_regression_lookup_v2.csv") %>% 
-#     dplyr::mutate(district = gsub('"', "", district))
+lm_lookup <- readr::read_csv("cpo_linear_regression_lookup_v2.csv")  
+# lm_lookup <- readr::read_csv("cpo_linear_regression_lookup_v2.csv") %>%
+    # dplyr::mutate(district = gsub('"', "", district))
 # readr::write_csv(lm_lookup, "cpo_linear_regression_lookup_v2.csv")
 # lm_lookup <- readr::read_csv("cpo_linear_regression_lookup.csv") 
 # 
@@ -205,13 +205,13 @@ mlr_list <- make_mlr_list(mlr_data)
 #   stats::setNames(names(mlr_list))
 
 # save a list of the models
-saveRDS(mlr_list, "mlr_model_list2.rds")
+saveRDS(mlr_list, "mlr_model_list.rds")
 # saveRDS(mlr_list, "data/mlr_model_list.rds")
 
 # save data used for modelling
 saveRDS(
   mlr_data,
-  "mlr_model_data2.rds"
+  "mlr_model_data.rds"
   # "data/mlr_model_data.rds"
 )
 

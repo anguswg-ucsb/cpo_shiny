@@ -27,23 +27,18 @@ library(gt)
 
 # Mapping packages
 library(leaflet)
-# library(leafem)
 
 # geospatial and climate data
 library(terra)
 library(climateR)
 
-# library(shinyjs)
 library(shinyBS)
-# library(bsplus)
 
 # Load function data_utils.R file
 source('final_utils.R')
 ```
 
 ```{r context="server"}
-# shinyjs::useShinyjs(rmd = TRUE)
-# bsplus::use_bs_tooltip()
 # # water rights data
 # water_rights <- readr::read_csv("detrended_all_data_final_v2.csv")
 
@@ -71,55 +66,23 @@ new_eddi <- eddi_from_catalog(
   name_col   = "district",
   verbose    = FALSE
   )
-# saveRDS(new_eddi, "updated_eddi_data.rds")
 
+# saveRDS(new_eddi, "updated_eddi_data.rds")
 # new_eddi <- readRDS("updated_eddi_data.rds")
 
-# all_dists   <- sf::read_sf("water_districts_simple.geojson") %>%
-#   dplyr::filter(DISTRICT  %in% c(1, 2, 3,  4, 5, 6,7, 8, 9, 23, 80, 64)) %>%
-#   janitor::clean_names() %>%
-#   dplyr::mutate(
-#       district = ifelse(district < 10, paste0("0", district), as.character(district))
-#     ) %>% 
-#   sf::st_transform(4326) %>%
-#   sf::st_cast("MULTIPOLYGON")
-# sf::write_sf(all_dists, "water_districts_subset2.gpkg")
-# readRDS("avg_weekly_calls_by_yeartype2.rds")
 # average yeartype data
 # avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype2.rds")
 avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds") %>% 
      dplyr::mutate(
       year_type = factor(year_type, levels = c("Dry", "Average", "Wet"))
     )
-# avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype2.rds")
-
-# avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds") %>% 
-#   dplyr::mutate(
-#       district = ifelse(district < 10, paste0("0", district), as.character(district))
-#     )
-
-# # districts of interest
-# doi   = unique(lm_lookup$district)
-# # districts for Linear Regression models on Page 2
-# model_dists <-  dists
-# model_dists <- 
-#   dists %>% 
-#   # dplyr::filter(DISTRICT %in% c("1", "5", "8", "64")) %>% 
-#     dplyr::filter(DISTRICT %in% as.numeric(doi)) %>% 
-#     dplyr::mutate(
-#       DISTRICT = ifelse(DISTRICT < 10, paste0("0", DISTRICT), as.character(DISTRICT))
-#     )
 
 # data used to generate linear regression models
 mod_df <- readRDS("mlr_model_data.rds")
-# mod_df <- readRDS("model_data.rds")
 
 #  list of linear regression models and metrics
 lm_list <- readRDS("mlr_model_list.rds")
-# lm_list <- readRDS("lin_reg_model_list2.rds")
 
-# # make a list of linear regression models from a dataframe of districts with these columns: 
-# #   "district", "resp_var", "resp_val", "predictor", and "predictor_val" columns
 # lm_list <- make_lm_list(df = mod_df)
 # saveRDS(lm_list, "data/lin_reg_model_list.rds")
 
@@ -140,12 +103,6 @@ map_click <- shiny::reactive({
 ```
 
 ```{r context="server"}
-# model_map_click <- shiny::reactive({
-#    input$modelBaseMap_click
-# })
-```
-
-```{r context="server"}
 date_input <- shiny::reactive({
    input$dateInputVal
 })
@@ -153,7 +110,6 @@ date_input <- shiny::reactive({
 
 ```{r context="server"}
 dist_id <- shiny::reactive({
-   # as.numeric(input$baseMap_shape_click$id)
    input$baseMap_shape_click$id
 })
 
@@ -161,9 +117,6 @@ dist_id <- shiny::reactive({
 
 ```{r context="server"}
 sub_dist1 <- shiny::reactive({
-  # subset to water district of interest
-   # dists[dists$DISTRICT == dist_id(), ]
-  
     # subset to water district of interest
     if(is.null(dist_id()) | dist_id() == " ") {
       
@@ -177,33 +130,15 @@ sub_dist1 <- shiny::reactive({
 ```
 
 ```{r, context = "server"}
-# model_dist_id <- shiny::reactive({
-#    input$districtInput
-# })
-
 model_dist_id <- shiny::reactive({
    # as.numeric(input$baseMap_shape_click$id)
    input$modelBaseMap_shape_click$id
 })
-
-# # id of clicked district 
-# model_dist_id <- shiny::reactive({
-#    # as.numeric(input$baseMap_shape_click$id)
-#   if(is.null(input$modelBaseMap_shape_click$id)) {
-#     return(" ")
-#   } else {
-#     input$modelBaseMap_shape_click$id
-#   }
-#    # input$modelBaseMap_shape_click$id
-# })
 ```
 
 ```{r context="server"}
 # subset district polygon based on districtInput
 sub_dist2 <- shiny::reactive({
-  # subset to water district of interest
-   # dists[dists$DISTRICT == model_dist_id(), ]
-
     # subset to water district of interest
     if(is.null(model_dist_id())) {
 
@@ -214,24 +149,6 @@ sub_dist2 <- shiny::reactive({
     }
 
 })
-
-# dists[dists$DISTRICT == model_dist_id(), ]
-# sub_dist2 <- shiny::reactive({
-#   # subset to water district of interest
-#    # dists[dists$DISTRICT == model_dist_id(), ]
-#   
-#     # subset to water district of interest
-#     if(is.null(model_dist_id()) | model_dist_id() == " ") {
-#       
-#       return(NULL)
-#       
-#     } else {
-#       dists[dists$DISTRICT == model_dist_id(), ]
-#     }
-#   
-# })
-# dists[dists$DISTRICT == model_dist_id(), ]
-# dists[dists$DISTRICT == "01", ]
 ```
 
 ```{r context="server"}
@@ -253,38 +170,9 @@ list_id <- shiny::reactive({
 ```
 
 ```{r context="server"}
-
-# # watch for changes in model_dist_id(), 
-# shiny::observeEvent(model_dist_id(), {
-#      # print(paste0("model_dist_id() CHANGED, RESETTING newDataInput AND newDataInputButton: ", model_dist_id()))
-#      #
-#      # print(paste0("newDataInput BEFORE reset: ", input$newDataInput))
-#      # print(paste0("newDataInputButton BEFORE reset: ", input$newDataInputButton))
-# 
-#     # Whenever model_dist_id() changes, reset the input value and action button
-#     shinyjs::reset("newDataInput")
-#     shinyjs::reset("newDataInputButton")
-# 
-#     output$rSquaredValueBox <- NULL  # clear the R-squared value box
-#     output$predictionValueBox <- NULL  # clear the predicted value value box
-#     #
-#     # print(paste0("newDataInput AFTER reset: ", input$newDataInput))
-#     # print(paste0("newDataInputButton AFTER reset: ", input$newDataInputButton))
-# })
-```
-
-
-```{r context="server"}
 call_year_df <- shiny::reactive({
   avg_yeartype %>% 
     dplyr::filter(district == dist_id())
-  
-    # call_year_df <-
-    #   avg_yeartype %>%
-    #   dplyr::filter(district == "06")
-    
-    # dplyr::filter(district == dist_id(), 
-    #               year_type == input$radioYearTypeButtons)
 })
 ```
 
@@ -301,10 +189,6 @@ dist_mod_df <- shiny::reactive({
 eddi_df <- shiny::reactive({
   new_eddi %>% 
     dplyr::filter(district == model_dist_id())
-    # new_eddi %>% 
-    # dplyr::filter(district == "01")
-    # dplyr::filter(district == dist_id(), 
-    #               year_type == input$radioYearTypeButtons)
 })
 ```
 
@@ -322,11 +206,6 @@ eddi_variable <- shiny::reactive({
       )
     
   }
-  # dplyr::filter(lm_lookup, district == "01")$predictor_name2
-  # new_eddi %>% 
-  #   dplyr::filter(district == model_dist_id())
-    # dplyr::filter(district == dist_id(), 
-    #               year_type == input$radioYearTypeButtons)
 })
 ```
 
@@ -338,24 +217,11 @@ eddi_val <- shiny::reactive({
     return(0)
   } else {
     return(
-      # dplyr::filter(
-      #   new_eddi,
-      #   district == model_dist_id())$may_eddi30d
       dplyr::filter(new_eddi, 
                     district == model_dist_id())[[eddi_variable()]]
       )
     
   }
-  
-  # dplyr::filter(new_eddi, district == "01")$may_eddi30d 
-  # variable = "may_eddi30d"
-  # dplyr::filter(new_eddi, district == "01")[[variable]]
-  # dplyr::filter(new_eddi, 
-  #               district == model_dist_id())[[eddi_variable()]]
-  # new_eddi %>% 
-  #   dplyr::filter(district == model_dist_id())
-    # dplyr::filter(district == dist_id(), 
-    #               year_type == input$radioYearTypeButtons)
 })
 ```
 
@@ -461,6 +327,22 @@ predictor_long_str <- shiny::reactive({
 
 ```{r context="server"}
 # string containing the predictor for the given district
+predictor_units <- shiny::reactive({
+  
+  # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
+  if(is.null(model_data())) {
+    
+    return(NULL)
+    
+  } else {
+    # lm_lookup$units1[lm_lookup$district == "01"]
+    return(lm_lookup$units1[lm_lookup$district == model_dist_id()])
+  }
+})
+```
+
+```{r context="server"}
+# string containing the predictor for the given district
 predictor_str_units <- shiny::reactive({
   
   # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
@@ -470,20 +352,12 @@ predictor_str_units <- shiny::reactive({
     
   } else {
     
-       pred_str <- model_data()$predictor_long_name[1]
-       
-       if (pred_str == "May 1 SWE") {
-         return("May 1 SWE (inches)")
-         
-       } else if(pred_str == "NRCS May 1 Apr-Sep forecast") {
-         
-         return("NRCS May 1 Apr-Sep forecast (kAF)")
-         
-       } else {
-         
-         return("Peak SWE (inches)")
-         
-       }
+      return(
+        paste0(
+          model_data()$predictor_long_name[1],
+          " (", predictor_units(), ") "
+          )
+        )
   }
 })
 
@@ -542,18 +416,6 @@ eddi_pred_valuebox_label <- shiny::reactive({
 ```
 
 ```{r context="server"}
-
-# # Inside the server function
-# output$predictor_label <- shiny::renderUI({
-#   if (is.null(predictor_long_str())) {
-#     return(HTML("Enter a predictor value after selecting a district..."))
-#   } else {
-#     bold_text <- paste0("<strong>", predictor_long_str(), "</strong>")
-#     return(HTML(paste0("Enter ", bold_text, " value...")))
-#   }
-# })
-
-# shiny::uiOutput("predictor_label")
 # # string containing the predictor for the given district
 predictor_label <- shiny::reactive({
 
@@ -635,9 +497,6 @@ tags$style(HTML("
 ```
 
 ```{r context="server"}
-# {r context="server"}
-# flexdashboard::valueBox(value = model_dist_id())
-# ("primary", "info", "success", "warning", "danger")
 output$districtValueBoxMap1 <- flexdashboard::renderValueBox(
   flexdashboard::valueBox(
     value = paste0("District: "),
@@ -648,9 +507,7 @@ output$districtValueBoxMap1 <- flexdashboard::renderValueBox(
 
 # Value box server
 shiny::observeEvent(dist_id(), {
-# shiny::observeEvent(event_trigger(), {
-      # print("observer4")
-
+  
       # Public Safety value box server
       output$districtValueBoxMap1 <- flexdashboard::renderValueBox(
 
@@ -660,7 +517,6 @@ shiny::observeEvent(dist_id(), {
           caption = " "
           )
         )
-
 })
 ```
 
@@ -694,35 +550,10 @@ shiny::observeEvent(input$baseMap_shape_click, {
      return(NULL)
 
    } else {
-    
-   # # if(!is.null(input$districtMapMLR_click)) {
-   #    click <- input$districtMapMLR_click %>%
-   #      data.frame() %>%
-   #      dplyr::select(lat,lng)
-      # print(click)
-
-          pt <- sf::st_as_sf(
-                    data.frame(
-                      lat = map_click()$lat,
-                      lng = map_click()$lng
-                      ),
-                    coords = c("lng", "lat"),
-                    crs = 4326
-                    )
-          # pt <- sf::st_as_sf(
-          #           data.frame(
-          #             lat = "39.978",
-          #             lng =  "-105.6"
-          #             ),
-          #           coords = c("lng", "lat"),
-          #           crs = 4326
-          #           )
 
           print(paste0("Subsetting mainstems to HUC4: ",  dist_id()))
 
           print("Subsetting WDIDs to district area...")
-
-          # sub_dist <- dists[dists$DISTRICT == as.numeric("06"), ]
 
           print("Updating leaflet map...")
 
@@ -796,7 +627,6 @@ shiny::observeEvent(input$baseMap_shape_click, {
 
 Column {data-width=500}
 ---------------------------------------------------------
-
 ###
 ```{r}
 shiny::plotOutput("callDatePlot")
@@ -838,7 +668,7 @@ A multiple linear regression was performed for each district. The top performing
 
 - Peak SWE
 
-- EDDI.
+- EDDI
 
 The model parameters and performance for each district is displayed in the table to the right. 
 
@@ -1135,7 +965,7 @@ shiny::observeEvent(input$newDataInputButton, {
             df_tbl <- dplyr::tibble(
               col1 = c(predictor_long_str(),
                        predictor_long_str2(),
-                       "Prediction",
+                       "Summer Call (Apr-Sep)",
                        "Equation", 
                        "R²"
               ),
@@ -1151,7 +981,7 @@ shiny::observeEvent(input$newDataInputButton, {
               # row_name = c("- ", "- ", "- ", "- ", "- "),
               # row_name = c("*", "*", "*", "*", "*"),
               # row_name = c("|", "|", "|", "|", "|"),
-              group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
+              group = c("Predictor Variables", "Predictor Variables", "Response Variable", "Model Equation", "Performance")
             )
 
             
@@ -1300,13 +1130,10 @@ Column {data-width=250}
 ---------------------------------------------------------
 ###
 ```{r}
-# paste0("<strong>Predictor Variables:</strong> these are the variables included in this districts. <strong>MLR model.Prediction:</strong> This is the average summer call year that results from the two predictor variable values above. This means that water rights with appropriation dates after this predicted year are likely to be out of priority and receive no water. <strong>Model equation:</strong> This is the best fitting MLR model given the available predictor variables. <strong>Performance:</strong> The higher the R² value, the better the performance of the model.")
-# # output prediction value box UI
 gt::gt_output("gtModelTable")
 shinyBS::bsPopover(
   "gtModelTable",
   title     = "Interpretation of MLR",
-  # content   = "Predictor Variables: these are the variables included in this districts MLR model.Prediction: This is the average summer call year that results from the two predictor variable values above. This means that water rights with appropriation dates after this predicted year are likely to be out of priority and receive no water. Model equation: This is the best fitting MLR model given the available predictor variables. Performance: The higher the R² value, the better the performance of the model.",
     content   = paste0("<strong>Predictor Variables:</strong> these are the variables included in this districts MLR model.<br><br><strong>Prediction:</strong> This is the average summer call year that results from the two predictor variable values above. This means that water rights with appropriation dates after this predicted year are likely to be out of priority and receive no water.<br><br><strong>Model equation:</strong> This is the best fitting MLR model given the available predictor variables.<br><br><strong>Performance:</strong> The higher the R² value, the better the performance of the model."),
   placement = "left",
   options   = list(container = "body")
@@ -1318,164 +1145,4 @@ tags$style(HTML("
                 background-color: white;
                 }
                 "))
-# flexdashboard::valueBoxOutput("predictionValueBox")
 ```
-
-<!-- ### -->
-<!-- ```{r} -->
-<!-- # # output prediction value box UI -->
-<!-- flexdashboard::valueBoxOutput("primaryPredictorValueBox") -->
-<!-- ``` -->
-
-<!-- ```{r context="server"} -->
-<!-- # # Render the prediction value Value Box -->
-<!-- output$primaryPredictorValueBox <- flexdashboard::renderValueBox( -->
-<!--   flexdashboard::valueBox( -->
-<!--     value = paste0(primary_pred_valuebox_label()), -->
-<!--     # value = paste0("Predictor: ", round(as.numeric(input$newDataInput), 2)), -->
-<!--     color = "danger", -->
-<!--     caption = predictor_long_str() -->
-<!--     ) -->
-<!--   # flexdashboard::valueBox( -->
-<!--   #   # value = paste0("Predictor: ", round(as.numeric(input$newDataInput), 2)), -->
-<!--   #   # value = paste0(predictor_long_str(), " ", round(as.numeric(input$newDataInput), 2)), -->
-<!--   #   value = paste0(predictor_long_str(), " ", primary_pred_valuebox_label()), -->
-<!--   #   color = "danger", -->
-<!--   #   caption = "" -->
-<!--   #   ) -->
-<!-- ) -->
-<!-- ``` -->
-
-<!-- ### -->
-<!-- ```{r} -->
-<!-- # # output prediction value box UI -->
-<!-- flexdashboard::valueBoxOutput("eddiValueBox") -->
-<!-- ``` -->
-
-<!-- ```{r context="server"} -->
-<!-- # x = 5 -->
-<!-- #   ifelse(is.na(x), " 454", 5) -->
-
-<!-- # label_val = ifelse( -->
-<!-- #     is.na(round(as.numeric(input$newDataInput), 2)), -->
-<!-- #     " ", -->
-<!-- #     round(as.numeric(input$newDataInput), 2) -->
-<!-- #     ) -->
-<!-- # # Render the prediction value Value Box -->
-<!-- output$eddiValueBox <- flexdashboard::renderValueBox( -->
-<!--   flexdashboard::valueBox( -->
-<!--     # value = paste0("EDDI: ", round(eddi_val(), 2)), -->
-<!--     # value = paste0("Predictor: ", round(eddi_val(), 2)), -->
-<!--     # value = paste0(predictor_long_str2(), " ", round(eddi_val(), 2)), -->
-<!--     # value = paste0(round(eddi_val(), 2)), -->
-<!--     value = paste0(eddi_pred_valuebox_label()), -->
-<!--     color = "danger", -->
-<!--     caption = predictor_long_str2() -->
-<!--     ) -->
-
-<!--   # flexdashboard::valueBox( -->
-<!--   #   value = paste0(predictor_long_str2(), " ", round(eddi_val(), 2)), -->
-<!--   #   # value = paste0(predictor_long_str2(), " ", eddi_valuebox_label()), -->
-<!--   #   color = "danger", -->
-<!--   #   caption = "" -->
-<!--   #   ) -->
-<!-- ) -->
-<!-- ``` -->
-
-<!-- ### -->
-<!-- ```{r} -->
-<!-- # # output prediction value box UI -->
-<!-- flexdashboard::valueBoxOutput("predictionValueBox") -->
-<!-- ``` -->
-
-<!-- ```{r context="server"} -->
-<!-- # # Render the prediction value Value Box -->
-<!-- output$predictionValueBox <- flexdashboard::renderValueBox( -->
-<!--   flexdashboard::valueBox( -->
-<!--     value = paste0("Prediction: "), -->
-<!--     color = "success", -->
-<!--     caption = " " -->
-<!--     ) -->
-<!-- ) -->
-<!-- ``` -->
-
-<!-- ### -->
-<!-- ```{r} -->
-<!-- flexdashboard::valueBoxOutput("rSquaredValueBox") -->
-<!-- # shinyBS::bsPopover( -->
-<!-- #   "rSquaredValueBox", -->
-<!-- #   title     = HTML(paste0("R",tags$sup("2"))), -->
-<!-- #   content   = "R-squared is a statistical measure that represents the proportion of the variance for a dependent variable that’s explained by an independent variable in a regression model.", -->
-<!-- #   placement = "bottom", -->
-<!-- #   options   = list(container = "body") -->
-<!-- #   ) -->
-<!-- # tags$style(HTML(" -->
-<!-- #                 .tooltip > .tooltip-inner { -->
-<!-- #                 width: 400px; -->
-<!-- #                 color: black; -->
-<!-- #                 background-color: white; -->
-<!-- #                 } -->
-<!-- #                 ")) -->
-<!-- ``` -->
-
-<!-- ```{r context="server"} -->
-<!-- # # flexdashboard::valueBox(value = model_dist_id()) -->
-<!-- output$rSquaredValueBox <- flexdashboard::renderValueBox( -->
-<!--   flexdashboard::valueBox( -->
-<!--     # value = paste0("R2: "), -->
-<!--     value =  HTML(paste0("R",tags$sup("2"), ": ")), -->
-<!--     color = "warning", -->
-<!--     caption = " " -->
-<!--     ) -->
-<!-- ) -->
-<!-- ``` -->
-
-<!-- Row -->
-<!-- --------------------------------------------------------- -->
-<!-- ### Observed EDDI -->
-<!-- ```{r} -->
-<!-- # shiny::plotOutput("observedEDDIPointPlot") -->
-<!-- # shinyBS::bsPopover( -->
-<!-- #   "observedPointPlot", -->
-<!-- #   title     = "Observed call year vs. Observed May 1 EDDI 30 day", -->
-<!-- #   content   = "", -->
-<!-- #   placement = "top", -->
-<!-- #   options   = list(container = "body") -->
-<!-- #   ) -->
-<!-- # tags$style(HTML(" -->
-<!-- #                 .tooltip > .tooltip-inner { -->
-<!-- #                 width: 400px; -->
-<!-- #                 color: black; -->
-<!-- #                 background-color: white; -->
-<!-- #                 } -->
-<!-- #                 ")) -->
-<!-- ``` -->
-
-<!-- ### Observed response vs. Observed predictors -->
-<!-- ```{r} -->
-<!-- # shiny::plotOutput("observedPointPlot") -->
-<!-- # shinyBS::bsPopover( -->
-<!-- #   "observedPointPlot", -->
-<!-- #   title     = "Observed call year vs. Observed predictor variables", -->
-<!-- #   content   = "The plot has observed average annual call year on the X axis and the observed predictor variable values for a given district. Providing predictor values to the input box on the left panel and pressing the predict button will generate a predicted average call year value based on the predictor value given. A red dot will be added to the scatter plot indicating the value The models explanitory power is explained through the R2 value displayed on the plot and in the value box above the map.", -->
-<!-- #   placement = "top", -->
-<!-- #   options   = list(container = "body") -->
-<!-- #   ) -->
-<!-- # tags$style(HTML(" -->
-<!-- #                 .tooltip > .tooltip-inner { -->
-<!-- #                 width: 400px; -->
-<!-- #                 color: black; -->
-<!-- #                 background-color: white; -->
-<!-- #                 } -->
-<!-- #                 ")) -->
-<!-- ``` -->
-
-<!-- ### Predictor vs. Fitted values -->
-<!-- ```{r} -->
-<!-- shiny::plotOutput("predictorFitPlot") -->
-<!-- ``` -->
-
-<!-- ### Observed vs. Predicted -->
-<!-- ```{r} -->
-<!-- shiny::plotOutput("fittedPointPlot") -->
-<!-- ``` -->
