@@ -5,7 +5,7 @@ account: lynkertech
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8375181
-bundleId: 7627403
+bundleId: 7631242
 url: https://lynkertech.shinyapps.io/cpo_shiny/
 asMultiple: FALSE
 asStatic: FALSE

@@ -43,7 +43,7 @@ source('final_utils.R')
 
 ```{r context="server"}
 # shinyjs::useShinyjs(rmd = TRUE)
-bsplus::use_bs_tooltip()
+# bsplus::use_bs_tooltip()
 # # water rights data
 # water_rights <- readr::read_csv("detrended_all_data_final_v2.csv")
 
@@ -53,19 +53,16 @@ lm_lookup <- readRDS("cpo_linear_regression_lookup.rds")
 # saveRDS(lm_lookup, "cpo_linear_regression_lookup.rds")
 
 # subset of districts
-# dists      <- sf::read_sf("water_districts_subset.gpkg")
 dists <- sf::read_sf("water_districts_subset.gpkg")
 
 # catalog entry for getting EDDI data
 cat <- readRDS("eddi_catalog.rds") %>% 
   update_duration()
-# cat <- readRDS("eddi_catalog.rds") %>% 
-#   update_duration()
 
-# get new EDDI 30 Day data when application loads
+# # get new EDDI 30 Day data when application loads
 new_eddi <- eddi_from_catalog(
   catalog    = cat,
-  aoi        = dplyr::mutate(dists, 
+  aoi        = dplyr::mutate(dists,
                              district = as.integer(district)),
   varname    = c("eddi30d", "eddi1y"),
   # varname    = "eddi30d",
@@ -74,6 +71,9 @@ new_eddi <- eddi_from_catalog(
   name_col   = "district",
   verbose    = FALSE
   )
+# saveRDS(new_eddi, "updated_eddi_data.rds")
+
+# new_eddi <- readRDS("updated_eddi_data.rds")
 
 # all_dists   <- sf::read_sf("water_districts_simple.geojson") %>%
 #   dplyr::filter(DISTRICT  %in% c(1, 2, 3,  4, 5, 6,7, 8, 9, 23, 80, 64)) %>%
@@ -84,9 +84,15 @@ new_eddi <- eddi_from_catalog(
 #   sf::st_transform(4326) %>%
 #   sf::st_cast("MULTIPOLYGON")
 # sf::write_sf(all_dists, "water_districts_subset2.gpkg")
-
+# readRDS("avg_weekly_calls_by_yeartype2.rds")
 # average yeartype data
-avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds")
+# avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype2.rds")
+avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds") %>% 
+     dplyr::mutate(
+      year_type = factor(year_type, levels = c("Dry", "Average", "Wet"))
+    )
+# avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype2.rds")
+
 # avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds") %>% 
 #   dplyr::mutate(
 #       district = ifelse(district < 10, paste0("0", district), as.character(district))
@@ -105,9 +111,9 @@ avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds")
 #     )
 
 # data used to generate linear regression models
-# mod_df <- readRDS("model_data.rds")
 mod_df <- readRDS("mlr_model_data.rds")
-# mod_df$predictor_long_name
+# mod_df <- readRDS("model_data.rds")
+
 #  list of linear regression models and metrics
 lm_list <- readRDS("mlr_model_list.rds")
 # lm_list <- readRDS("lin_reg_model_list2.rds")
@@ -171,8 +177,13 @@ sub_dist1 <- shiny::reactive({
 ```
 
 ```{r, context = "server"}
+# model_dist_id <- shiny::reactive({
+#    input$districtInput
+# })
+
 model_dist_id <- shiny::reactive({
-   input$districtInput
+   # as.numeric(input$baseMap_shape_click$id)
+   input$modelBaseMap_shape_click$id
 })
 
 # # id of clicked district 
@@ -267,6 +278,11 @@ list_id <- shiny::reactive({
 call_year_df <- shiny::reactive({
   avg_yeartype %>% 
     dplyr::filter(district == dist_id())
+  
+    # call_year_df <-
+    #   avg_yeartype %>%
+    #   dplyr::filter(district == "06")
+    
     # dplyr::filter(district == dist_id(), 
     #               year_type == input$radioYearTypeButtons)
 })
@@ -445,6 +461,36 @@ predictor_long_str <- shiny::reactive({
 
 ```{r context="server"}
 # string containing the predictor for the given district
+predictor_str_units <- shiny::reactive({
+  
+  # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
+  if(is.null(model_data())) {
+    
+    return(NULL)
+    
+  } else {
+    
+       pred_str <- model_data()$predictor_long_name[1]
+       
+       if (pred_str == "May 1 SWE") {
+         return("May 1 SWE (inches)")
+         
+       } else if(pred_str == "NRCS May 1 Apr-Sep forecast") {
+         
+         return("NRCS May 1 Apr-Sep forecast (kAF)")
+         
+       } else {
+         
+         return("Peak SWE (inches)")
+         
+       }
+  }
+})
+
+```
+
+```{r context="server"}
+# string containing the predictor for the given district
 predictor_long_str2 <- shiny::reactive({
   
   # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
@@ -496,27 +542,39 @@ eddi_pred_valuebox_label <- shiny::reactive({
 ```
 
 ```{r context="server"}
-# string containing the predictor for the given district
+
+# # Inside the server function
+# output$predictor_label <- shiny::renderUI({
+#   if (is.null(predictor_long_str())) {
+#     return(HTML("Enter a predictor value after selecting a district..."))
+#   } else {
+#     bold_text <- paste0("<strong>", predictor_long_str(), "</strong>")
+#     return(HTML(paste0("Enter ", bold_text, " value...")))
+#   }
+# })
+
+# shiny::uiOutput("predictor_label")
+# # string containing the predictor for the given district
 predictor_label <- shiny::reactive({
-  
+
   # if list_id() is NULL, return NULL, otherwise, get the given district lm_list element
   if(is.null(predictor_long_str())) {
-    
+
     return(paste0("Enter a predictor value after selecting a district..."))
-    
+
   } else {
+
+    return(paste0("Enter ", predictor_str_units(), " value..."))
     
-    # return(paste0("Enter ", toupper(predictor_long_str()), " value..."))
-    return(paste0("Enter ", predictor_long_str(), " value..."))
-    
+    # this does NOT work
+    # bold_text <- paste0("<strong>", predictor_long_str(), "</strong>")
+    # return(HTML(paste0("Enter ", bold_text, " value...")))
+
+    # # this does NOT work
+    # return(paste0("Enter <strong>", predictor_str_units(), "</strong> value..."))
+
   }
 })
-
-# ifelse(
-#   is.null(predictor_str()),
-#   "Select a district to make a provide SWE/NRCS Forecast data...",
-#   paste0("Enter ", predictor_str(), " value...")
-#        )
 ```
 
 Right-o-graph
@@ -526,27 +584,23 @@ Inputs {.sidebar}
 ---------------------------------------------------------
 <strong>Click on a district on the map to begin.</strong>
 
-<br>
-
 In Colorado, when a shortage occurs, senior water rights-holders may place a “call” on the river. Every water rights user has a priority date, or the date the water right was established. The year of that right is called a “call year”. The plot to the right shows the average call year of the senior water rights-holder who placed a “call” on the river for every day of the year. 
 
 The data comes from 34 individual WDIDs across 12 water districts in Colorado's South Platte River basin. WDIDs were selected by locating the most upstream water users along the mainstem rivers within each water district.  
 
-Depending on the amount of water in the river, the average year of the senior water rights-holder placing the call on the river changes. Select the hydrologic year type (Dry, Average, or Wet) below to highlight the corresponding line on the graph. 
-
 <br>
 
 ```{r}
-shiny::radioButtons(
-  inputId  = "radioYearTypeButtons",
-  label = "Water year type:",
-  choices = c(
-    "Dry"    = "Dry",
-   "Average" = "Average",
-   "Wet"     = "Wet"
-   ),
-  selected = "Average"
-  )
+# shiny::radioButtons(
+#   inputId  = "radioYearTypeButtons",
+#   label = "Water year type:",
+#   choices = c(
+#     "Dry"    = "Dry",
+#    "Average" = "Average",
+#    "Wet"     = "Wet"
+#    ),
+#   selected = "Average"
+#   )
 ```
 
 Column {data-width=500}
@@ -610,51 +664,24 @@ shiny::observeEvent(dist_id(), {
 })
 ```
 
-###
-```{r}
-shiny::plotOutput("callDatePlot") 
-shinyBS::bsPopover(
-  "callDatePlot",
-  title     = "Annual historic call dates by week",
-  content   = "After clicking on a district on the map above, a lineplot showing the selected district's historic average call date (Y axis) for a given week of the year (X axis). The 3 lines each represent a different average value calculated for across all years for a given year type (dry, average, and wet). Year types were calculated by creating terciles from the annual total streamflow discharge volume at a representative USGS gage for each district.",
-  placement = "left",
-  options   = list(container = "body")
-  )
-tags$style(HTML("
-                .tooltip > .tooltip-inner {
-                width: 400px;
-                color: black;
-                background-color: white;
-                }
-                "))
-
-# shiny::plotOutput("callDatePlot") %>% 
-   # bsplus::bs_embed_tooltip(
-   #   title = "After clicking on a district on the map above, a lineplot showing the selected district's historic average call date (Y axis) for a given week of the year (X axis). The 3 lines each represent a different average value calculated for across all years for a given year type (dry, average, and wet). Year types were calculated by creating terciles from the annual total streamflow discharge volume at a representative USGS gage for each district.", 
-   #   placement = "left"
-   #   )
-```
-
-Column {data-width=500}
----------------------------------------------------------
 ### 
 ```{r}
 # District leaflet map output
 leaflet::leafletOutput("baseMap")
-shinyBS::bsPopover(
-  "baseMap",
-  title     = "Colorado South Platte Water Districts",
-  content   = "Click on a water district to view annual historical call dates for a given week",
-  placement = "left",
-  options   = list(container = "body")
-  )
-tags$style(HTML("
-                .tooltip > .tooltip-inner {
-                width: 400px;
-                color: black;
-                background-color: white;
-                }
-                "))
+# shinyBS::bsPopover(
+#   "baseMap",
+#   title     = "Colorado South Platte Water Districts",
+#   content   = "Click on a water district to view annual historical call dates for a given week",
+#   placement = "right",
+#   options   = list(container = "body")
+#   )
+# tags$style(HTML("
+#                 .tooltip > .tooltip-inner {
+#                 width: 400px;
+#                 color: black;
+#                 background-color: white;
+#                 }
+#                 "))
 ```
 
 ```{r context="server"}
@@ -682,9 +709,6 @@ shiny::observeEvent(input$baseMap_shape_click, {
                     coords = c("lng", "lat"),
                     crs = 4326
                     )
-          # 39.7792 -105.7214
-          # 40.66392 -105.4837
-          # 40.69808 -105.6
           # pt <- sf::st_as_sf(
           #           data.frame(
           #             lat = "39.978",
@@ -697,26 +721,8 @@ shiny::observeEvent(input$baseMap_shape_click, {
           print(paste0("Subsetting mainstems to HUC4: ",  dist_id()))
 
           print("Subsetting WDIDs to district area...")
-# 
-#           # subset to water district of interest
-#           sub_dist <- dists[dists$DISTRICT == dist_id(), ]
 
-
-          # area_nhd <- nhdplusTools::get_nhdplus(
-          #   AOI         = sub_dist,
-          #   realization = c("flowline"),
-          #   streamorder = 5
-          #   )
-
-          # nhdplusTools::navigate_network(
-          #   start = pt,
-          #
-          # )
-
-
-          # sub_pts  <- wr_pts[wr_pts$water_district == dist_id(), ]
           # sub_dist <- dists[dists$DISTRICT == as.numeric("06"), ]
-          # sub_pts  <- wr_pts[wr_pts$water_district == as.numeric("06"), ]
 
           print("Updating leaflet map...")
 
@@ -745,11 +751,8 @@ shiny::observeEvent(input$baseMap_shape_click, {
                                         )
                   ) %>%
                 leaflet::addPolygons(
-                    # data         = sub_dist,
                     data = sub_dist1(),
                     fillColor    = '#3EB489',
-                    # fillColor = 'grey',
-                    # fillColor = ~pal_fact(BASIN),
                     fillOpacity  = 0.5,
                     col          = "black",
                     opacity      = 1,
@@ -764,25 +767,6 @@ shiny::observeEvent(input$baseMap_shape_click, {
                                           "font-weight" = "1000")
                                       )
                 )
-            # leaflet::addPolylines(
-            #   data = area_nhd,
-            #   color = "navy",
-            #   opacity = 0.9,
-            #   stroke = TRUE
-            # )
-              # leaflet::addCircleMarkers(
-              #         data        = sub_pts()[sub_pts()$wdid == input$selectWDID, ],
-              #         radius      = 10,
-              #         stroke      = FALSE,
-              #         color       = "red",
-              #         opacity     = 1,
-              #         fillColor   = "red",
-              #         fillOpacity = 0.7
-              #         )
-            # leaflet::addCircleMarkers(
-            #   data = sub_pts$
-            #
-            # )
 
              shiny::observe({
 
@@ -795,17 +779,48 @@ shiny::observeEvent(input$baseMap_shape_click, {
                      # render call date over time plot
                      output$callDatePlot <- shiny::renderPlot({
                        
-                        make_avg_yeartype_rightograph_plot(
-                          df    = call_year_df(),
-                          type  = input$radioYearTypeButtons
+                        make_yeartype_rightograph_plot(
+                          df    = call_year_df()
                           )
+                        # make_avg_yeartype_rightograph_plot(
+                        #   df    = call_year_df(),
+                        #   type  = input$radioYearTypeButtons
+                        #   )
 
                         })
-                     # shinyBS::addPopover()
                        }
                })
              }
           })
+```
+
+Column {data-width=500}
+---------------------------------------------------------
+
+###
+```{r}
+shiny::plotOutput("callDatePlot")
+shinyBS::bsPopover(
+  id = "callDatePlot",
+  title     = "Average call years by year type",
+  content   = "Each timeseries shows  the year of the appropriation date of the senior water user placing a call on the river. The senior water user may be located in a downstream district. Depending on the hydrologic year type (Wet, Dry, or Average), the appropriation year of the senior water rights-holder placing the call on the river changes.",
+  placement = "left",
+  trigger = "hover",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
+# Column {data-width=500}
+# shiny::plotOutput("callDatePlot") %>% 
+   # bsplus::bs_embed_tooltip(
+   #   title = "After clicking on a district on the map above, a lineplot showing the selected district's historic average call date (Y axis) for a given week of the year (X axis). The 3 lines each represent a different average value calculated for across all years for a given year type (dry, average, and wet). Year types were calculated by creating terciles from the annual total streamflow discharge volume at a representative USGS gage for each district.", 
+   #   placement = "left"
+   #   )
 ```
 
 Regression models 
@@ -813,42 +828,44 @@ Regression models
 
 Inputs {.sidebar}
 ---------------------------------------------------------
-Use the dropdown menu below to select a water district from the map on the right.
+<strong>Click on a district on the map to begin.</strong>
 
+A multiple linear regression was performed for each district. The top performing predictor variables include:
 
-
-```{r, context = "server"}
-shiny::selectizeInput(
-  inputId = "districtInput",
-  label   = "Select a district",
-  choices = c(
-                # "" = NA,
-                "1" = "01", 
-                "2" = "02", 
-                "3" = "03", 
-                "4" = "04", 
-                "5" = "05", 
-                "6" = "06",
-                "7" = "07",
-                "8" = "08",
-                "9" = "09",
-                "23" = "23",
-                "64" = "64",
-                "80" = "80"
-                ),
-  multiple = TRUE, 
-  options = list(maxItems = 1)
-  ) 
-```
-
-The top performing predictor variable was selected for each district, thus when you select a district from the above menu, you will be prompted to enter a value for one of the following 3 predictor variables: 
 - May 1st SWE
+
 - NRCS May 1 Apr-Sep forecast
-- Peak SWE 
+
+- Peak SWE
+
+- EDDI.
+
+The model parameters and performance for each district is displayed in the table to the right. 
 
 <br>
 
-Provide one of these variables in the text box below and press the "Predict" button to generate a predicted average summer call year value. The model parameters and perforamnce can be seen in the table on the right hand side of the page.
+<strong>Prediction Tool:</strong>
+Current EDDI is provided. To predict an average summer call year, enter a value for the second predictor variable in the box below.
+
+<br>
+
+```{r, context = "server"}
+# instructions text: 
+# Use the dropdown menu below to select a water district from the map on the right.
+# shiny::selectizeInput(
+#   inputId = "districtInput",
+#   label   = "Select a district",
+#   choices = c("1" = "01", "2" = "02", 
+#               "3" = "03",  "4" = "04", 
+#               "5" = "05", "6" = "06",
+#               "7" = "07", "8" = "08",
+#               "9" = "09","23" = "23",
+#               "64" = "64", "80" = "80" ),
+#   multiple = TRUE, 
+#   options = list(maxItems = 1)) 
+```
+
+
 
 ```{r, context = "server"}
 shiny::textInput(inputId = "newDataInput", 
@@ -859,14 +876,19 @@ shiny::textInput(inputId = "newDataInput",
                  #              "Select a district to make a provide SWE/NRCS Forecast data...", 
                  #              paste0("Enter ", predictor_str(), " value...")
                  #                   ),
-                 value   = NULL
+                 value   = NULL,
+                 placeholder = NULL
                  )
 
 shiny::actionButton("newDataInputButton",
                     label = "Predict")
 
 shiny::observeEvent(predictor_label(), {
-    shiny::updateTextInput(session, "newDataInput", label = predictor_label())
+    shiny::updateTextInput(session,
+                           "newDataInput", 
+                           label = predictor_label(),
+                           placeholder = predictor_long_str()
+                           )
   })
 ```
 
@@ -922,23 +944,23 @@ shiny::observeEvent(model_dist_id(), {
 })
 ```
 
-### Model Map
+###
 ```{r}
 leaflet::leafletOutput("modelBaseMap")
-shinyBS::bsPopover(
-  "modelBaseMap",
-  title     = "Colorado South Platte Water Districts",
-  content   = "Use the selection drop down in the left panel to select and highlight a water district on the map",
-  placement = "top",
-  options   = list(container = "body")
-  )
-tags$style(HTML("
-                .tooltip > .tooltip-inner {
-                width: 400px;
-                color: black;
-                background-color: white;
-                }
-                "))
+# shinyBS::bsPopover(
+#   "modelBaseMap",
+#   title     = "Colorado South Platte Water Districts",
+#   content   = "Use the selection drop down in the left panel to select and highlight a water district on the map",
+#   placement = "right",
+#   options   = list(container = "body")
+#   )
+# tags$style(HTML("
+#                 .tooltip > .tooltip-inner {
+#                 width: 400px;
+#                 color: black;
+#                 background-color: white;
+#                 }
+#                 "))
 ```
 
 ```{r context="server"}
@@ -952,17 +974,7 @@ shiny::observeEvent(model_dist_id(), {
 
    } else {
 
-          # pt <- sf::st_as_sf(
-          #           data.frame(
-          #             lat = model_map_click()$lat,
-          #             lng = model_map_click()$lng
-          #             ),
-          #           coords = c("lng", "lat"),
-          #           crs = 4326
-          #           )
-          # # 39.7792 -105.7214
-          # # 40.66392 -105.4837
-          # # 40.69808 -105.6
+       
           #  print(paste0("Map 2 latitude ---> ", model_map_click()$lat))
           #  print(paste0("Map 2 longitude ---> ", model_map_click()$lng))
           # # print(paste0("Subsetting mainstems to HUC4: ",  model_dist_id()))
@@ -1030,15 +1042,6 @@ shiny::observeEvent(model_dist_id(), {
                                           "font-weight" = "1000")
                                       )
                 )
-
-              # print(paste0("- list_id(): ", list_id()))
-              # print(paste0("- class(model_obj()): ",
-              #              class(model_obj()))
-              #       )
-              # 
-              #  print(paste0("- class(model_data()): ",
-              #              class(model_data()))
-              #        )
 
              shiny::observe({
 
@@ -1144,21 +1147,25 @@ shiny::observeEvent(input$newDataInputButton, {
                 paste0("Call year ~ ", predictor_long_str(), " + ", predictor_long_str2()),
                 round(lm_data()$r2, 2)
               ),
-              row_name = c("-", "-", "-", "-", "-"),
+              row_name = c("—", "—", "—", "—", "—"),
+              # row_name = c("- ", "- ", "- ", "- ", "- "),
+              # row_name = c("*", "*", "*", "*", "*"),
+              # row_name = c("|", "|", "|", "|", "|"),
               group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
             )
-          
+
             
             model_table <- 
               df_tbl %>% 
               gt::gt(rowname_col = "row_name", groupname_col = "group") %>% 
               gt::tab_header(
-                # title = md("**My Table Title**")
-                title = gt::md(paste0(
-                                lm_lookup$district_name[lm_lookup$district == model_dist_id()]
+                title = gt::md(paste0("**",
+                                lm_lookup$district_name[lm_lookup$district == model_dist_id()],
+                                "**"
                                   )
                                 ),
-                subtitle = gt::md(paste0("**District: ", model_dist_id(), "**"))
+                subtitle = gt::md(paste0("District: ", model_dist_id()))
+                # subtitle = gt::md(paste0("**District: ", model_dist_id(), "**"))
                 # title = md(paste0("**District: ", district_num, "**")),
                 # subtitle = md(paste0(district_name))
               ) %>%
@@ -1174,19 +1181,28 @@ shiny::observeEvent(input$newDataInputButton, {
                 # locations = cells_body(columns = group)
                 locations = gt::cells_row_groups()
               ) %>% 
-              gt::tab_style(
-                style = gt::cell_fill(color = "gold", alpha = 0.8), # highlight R squared value
+              gt::tab_style( # highlight R squared value
+                style = list(
+                  gt::cell_fill(color = "gold", alpha = 0.8),
+                  gt::cell_text(weight = "bold")
+                  ),
                 locations = gt::cells_body(rows = 5, columns = "col2") # column and row of cell to highlight
               ) %>% 
               gt::tab_style(
-                style = gt::cell_fill(color = "#3EB489", alpha = 0.7), # highlight prediction value
+                style = list(  # highlight prediction value
+                  gt::cell_fill(color = "#3EB489", alpha = 0.7),
+                  gt::cell_text(weight = "bold")
+                ),
                 locations = gt::cells_body(rows = 3, columns = "col2") # column and row of cell to highlight
               ) %>% 
               gt::tab_style(
                 style = gt::cell_fill(color = "indianred", alpha = 0.7), # highlight predictor variable values
                 locations = gt::cells_body(rows = c(1, 2), columns = "col2") # column and row of cell to highlight
+                ) %>% 
+              gt::tab_options(
+                table.font.size = 20
                 )
-
+            
           output$gtModelTable <- gt::render_gt({
             model_table
           })
@@ -1284,72 +1300,87 @@ Column {data-width=250}
 ---------------------------------------------------------
 ###
 ```{r}
+# paste0("<strong>Predictor Variables:</strong> these are the variables included in this districts. <strong>MLR model.Prediction:</strong> This is the average summer call year that results from the two predictor variable values above. This means that water rights with appropriation dates after this predicted year are likely to be out of priority and receive no water. <strong>Model equation:</strong> This is the best fitting MLR model given the available predictor variables. <strong>Performance:</strong> The higher the R² value, the better the performance of the model.")
 # # output prediction value box UI
 gt::gt_output("gtModelTable")
+shinyBS::bsPopover(
+  "gtModelTable",
+  title     = "Interpretation of MLR",
+  # content   = "Predictor Variables: these are the variables included in this districts MLR model.Prediction: This is the average summer call year that results from the two predictor variable values above. This means that water rights with appropriation dates after this predicted year are likely to be out of priority and receive no water. Model equation: This is the best fitting MLR model given the available predictor variables. Performance: The higher the R² value, the better the performance of the model.",
+    content   = paste0("<strong>Predictor Variables:</strong> these are the variables included in this districts MLR model.<br><br><strong>Prediction:</strong> This is the average summer call year that results from the two predictor variable values above. This means that water rights with appropriation dates after this predicted year are likely to be out of priority and receive no water.<br><br><strong>Model equation:</strong> This is the best fitting MLR model given the available predictor variables.<br><br><strong>Performance:</strong> The higher the R² value, the better the performance of the model."),
+  placement = "left",
+  options   = list(container = "body")
+  )
+tags$style(HTML("
+                .tooltip > .tooltip-inner {
+                width: 400px;
+                color: black;
+                background-color: white;
+                }
+                "))
 # flexdashboard::valueBoxOutput("predictionValueBox")
 ```
 
-###
-```{r}
-# # output prediction value box UI
-flexdashboard::valueBoxOutput("primaryPredictorValueBox")
-```
+<!-- ### -->
+<!-- ```{r} -->
+<!-- # # output prediction value box UI -->
+<!-- flexdashboard::valueBoxOutput("primaryPredictorValueBox") -->
+<!-- ``` -->
 
-```{r context="server"}
-# # Render the prediction value Value Box
-output$primaryPredictorValueBox <- flexdashboard::renderValueBox(
-  flexdashboard::valueBox(
-    value = paste0(primary_pred_valuebox_label()),
-    # value = paste0("Predictor: ", round(as.numeric(input$newDataInput), 2)),
-    color = "danger",
-    caption = predictor_long_str()
-    )
-  # primary_pred_valuebox_label
-  # flexdashboard::valueBox(
-  #   # value = paste0("Predictor: ", round(as.numeric(input$newDataInput), 2)),
-  #   # value = paste0(predictor_long_str(), " ", round(as.numeric(input$newDataInput), 2)),
-  #   value = paste0(predictor_long_str(), " ", primary_pred_valuebox_label()),
-  #   color = "danger",
-  #   caption = ""
-  #   )
-)
-```
+<!-- ```{r context="server"} -->
+<!-- # # Render the prediction value Value Box -->
+<!-- output$primaryPredictorValueBox <- flexdashboard::renderValueBox( -->
+<!--   flexdashboard::valueBox( -->
+<!--     value = paste0(primary_pred_valuebox_label()), -->
+<!--     # value = paste0("Predictor: ", round(as.numeric(input$newDataInput), 2)), -->
+<!--     color = "danger", -->
+<!--     caption = predictor_long_str() -->
+<!--     ) -->
+<!--   # flexdashboard::valueBox( -->
+<!--   #   # value = paste0("Predictor: ", round(as.numeric(input$newDataInput), 2)), -->
+<!--   #   # value = paste0(predictor_long_str(), " ", round(as.numeric(input$newDataInput), 2)), -->
+<!--   #   value = paste0(predictor_long_str(), " ", primary_pred_valuebox_label()), -->
+<!--   #   color = "danger", -->
+<!--   #   caption = "" -->
+<!--   #   ) -->
+<!-- ) -->
+<!-- ``` -->
 
-###
-```{r}
-# # output prediction value box UI
-flexdashboard::valueBoxOutput("eddiValueBox")
-```
+<!-- ### -->
+<!-- ```{r} -->
+<!-- # # output prediction value box UI -->
+<!-- flexdashboard::valueBoxOutput("eddiValueBox") -->
+<!-- ``` -->
 
-```{r context="server"}
-# x = 5
-#   ifelse(is.na(x), " 454", 5)
+<!-- ```{r context="server"} -->
+<!-- # x = 5 -->
+<!-- #   ifelse(is.na(x), " 454", 5) -->
 
-# label_val = ifelse(
-#     is.na(round(as.numeric(input$newDataInput), 2)),
-#     " ",
-#     round(as.numeric(input$newDataInput), 2)
-#     )
-# # Render the prediction value Value Box
-output$eddiValueBox <- flexdashboard::renderValueBox(
-  flexdashboard::valueBox(
-    # value = paste0("EDDI: ", round(eddi_val(), 2)),
-    # value = paste0("Predictor: ", round(eddi_val(), 2)),
-    # value = paste0(predictor_long_str2(), " ", round(eddi_val(), 2)),
-    # value = paste0(round(eddi_val(), 2)),
-    value = paste0(eddi_pred_valuebox_label()),
-    color = "danger",
-    caption = predictor_long_str2()
-    )
+<!-- # label_val = ifelse( -->
+<!-- #     is.na(round(as.numeric(input$newDataInput), 2)), -->
+<!-- #     " ", -->
+<!-- #     round(as.numeric(input$newDataInput), 2) -->
+<!-- #     ) -->
+<!-- # # Render the prediction value Value Box -->
+<!-- output$eddiValueBox <- flexdashboard::renderValueBox( -->
+<!--   flexdashboard::valueBox( -->
+<!--     # value = paste0("EDDI: ", round(eddi_val(), 2)), -->
+<!--     # value = paste0("Predictor: ", round(eddi_val(), 2)), -->
+<!--     # value = paste0(predictor_long_str2(), " ", round(eddi_val(), 2)), -->
+<!--     # value = paste0(round(eddi_val(), 2)), -->
+<!--     value = paste0(eddi_pred_valuebox_label()), -->
+<!--     color = "danger", -->
+<!--     caption = predictor_long_str2() -->
+<!--     ) -->
 
-  # flexdashboard::valueBox(
-  #   value = paste0(predictor_long_str2(), " ", round(eddi_val(), 2)),
-  #   # value = paste0(predictor_long_str2(), " ", eddi_valuebox_label()),
-  #   color = "danger",
-  #   caption = ""
-  #   )
-)
-```
+<!--   # flexdashboard::valueBox( -->
+<!--   #   value = paste0(predictor_long_str2(), " ", round(eddi_val(), 2)), -->
+<!--   #   # value = paste0(predictor_long_str2(), " ", eddi_valuebox_label()), -->
+<!--   #   color = "danger", -->
+<!--   #   caption = "" -->
+<!--   #   ) -->
+<!-- ) -->
+<!-- ``` -->
 
 <!-- ### -->
 <!-- ```{r} -->

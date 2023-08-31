@@ -10,7 +10,6 @@ library(ggplot2)
 
 # Mapping packages
 library(leaflet)
-library(leafem)
 # library(sf)
 
 # Load function data_utils.R file
@@ -152,7 +151,28 @@ extra_calls2[common] <- lapply(common, function(x) {
 raw <- dplyr::bind_rows(raw, extra_calls2)
 
 readr::write_csv(raw, "/Users/anguswatters/Desktop/cpo_data/call_data/cdss_raw_daily_call_data_combined_v2.csv")
+# ###########################################################
+# ################### MAINSTEM YEARTYPES ####################
+# ###########################################################
 
+# # water year type by district and year
+# yeartypes <- readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/water_district_yeartype.csv") %>% 
+#   dplyr::mutate(
+#     district = ifelse(district < 10, paste0("0", district), as.character(district))
+#   )
+
+# replace district 5 data in "yeartypes" with this data
+mainstem_yeartypes <-
+  readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/mainstem_yeartype.csv") %>% 
+  dplyr::select(year, year_type = type)
+
+# out_yeartypes <- dplyr::bind_rows(
+#   dplyr::filter(yeartypes, district != 5), 
+#   fixed_yeartypes
+# ) %>% 
+#   dplyr::rename(year_type = type)
+# 
+# readr::write_csv(out_yeartypes, "/Users/anguswatters/Desktop/cpo_data/year_type/water_district_yeartype_v2.csv")
 # ###########################################################################
 # ################### FIX DISTRICT 5 YEAR TYPE DATAFRAME ####################
 # ###########################################################################
@@ -183,8 +203,14 @@ readr::write_csv(out_yeartypes, "/Users/anguswatters/Desktop/cpo_data/year_type/
 # ############################################################################
 # rm(out_yeartypes, yeartypes, fixed_yeartypes)
 
-# water year type by district and year
+# # water year type by district and year
 yeartypes <- readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/water_district_yeartype_v2.csv")
+
+# replace district 5 data in "yeartypes" with this data
+# yeartypes <-
+#   readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/mainstem_yeartype.csv") %>% 
+#   dplyr::select(year, year_type = type) %>% 
+#   dplyr::mutate(year = as.character(year))
 
 raw <- readr::read_csv("/Users/anguswatters/Desktop/cpo_data/call_data/cdss_raw_daily_call_data_combined_v2.csv")
 # tmp_raw <- raw %>% 
@@ -201,17 +227,19 @@ wdid_calls <-
       yeartypes, 
       year = as.character(year)
       ),
+    # by = c("year")
     by = c("district", "year")
   ) 
 
-readr::write_csv(wdid_calls, "/Users/anguswatters/Desktop/cpo_data/year_type/weekly_avg_district_call_data.csv")
+# readr::write_csv(wdid_calls, "/Users/anguswatters/Desktop/cpo_data/year_type/weekly_avg_district_call_data.csv")
+readr::write_csv(wdid_calls, "/Users/anguswatters/Desktop/cpo_data/year_type/weekly_avg_district_call_data_v2.csv")
 
 # ############################################################################
 # ################ SUMMARIZE YEAR TYPE DATA FOR DASHBOARD ####################
 # ############################################################################
 
-wdid_calls <- readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/weekly_avg_district_call_data.csv")
-
+# wdid_calls <- readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/weekly_avg_district_call_data.csv")
+wdid_calls <- readr::read_csv("/Users/anguswatters/Desktop/cpo_data/year_type/weekly_avg_district_call_data_v2.csv")
 wdid_calls
 
 avg_yeartype <- 
@@ -226,8 +254,9 @@ avg_yeartype <-
   ) %>% 
   na.omit()
 
-
+# saveRDS(avg_yeartype, "avg_weekly_calls_by_yeartype.rds")
 saveRDS(avg_yeartype, "avg_weekly_calls_by_yeartype2.rds")
+
 tmp <- readRDS("avg_weekly_calls_by_yeartype.rds")
 tmp %>% 
   dplyr::filter(district == 5)

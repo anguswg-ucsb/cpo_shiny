@@ -62,6 +62,117 @@ dist_basemap <- function(shp) {
   
 }
 
+make_yeartype_rightograph_plot <- function(df) {
+  
+  # df <-
+  #   avg_yeartype %>%
+  #   dplyr::filter(district == "06")
+  
+  # df <- weekly_calls
+  # yeartype = "average"
+  # dist = 1
+  
+  # df <-
+  #   avg_yeartype %>%
+  #   dplyr::filter(
+  #     district == "64"
+  #   )
+  # df$label <- NA
+  # df <-
+  #   df %>%
+  #   dplyr::group_by(year_type) %>%
+  #   dplyr::mutate(
+  #     label = dplyr::case_when(
+  #       week == max(week) ~ year_type,
+  #       TRUE              ~ NA
+  #     )
+  #   )
+  # yeartype_min = 1840
+  # yeartype_max = 2000
+  
+  # district_lab = unique(df$district)
+
+  # df %>%
+  #   dplyr::mutate(
+  #     year_type = factor(year_type, levels = c("Dry", "Average", "Wet"))
+  #   ) %>%
+  
+  rightograph <-
+    df %>%
+    ggplot2::ggplot() +
+    ggplot2::geom_line(ggplot2::aes(x = week, 
+                                    y = priority_date,
+                                    color = year_type,
+                                    alpha = year_type,
+                                    size = year_type
+                                    # color = factor(year_type),
+                                    # alpha = factor(year_type)
+                                    ),
+                       # alpha = 0.7,
+                       size = 3
+    ) +
+    # ggplot2::geom_hline(ggplot2::aes(x = day, y = priority_date), yintercept = min_line, size = 2.5, color = "black") +
+    ggplot2::scale_x_continuous(
+      limits = c(1, 52), 
+      breaks =   seq(1, 52, length.out = length(c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec"))),
+      labels = c("Jan", "Mar", "May", "Jul", "Sep", "Nov", "Dec")
+    ) +
+    ggplot2::scale_y_datetime(
+      limits = c(as.POSIXct("1840-01-01 00:00:00"),
+                 as.POSIXct("2000-01-01 12:00:00")),
+      breaks = seq.POSIXt(
+        as.POSIXct("1840-01-01"),
+        as.POSIXct("2000-01-01"),
+        "20 years"
+        ),
+      date_labels = "%Y"
+      ) +
+    # ggplot2::ylim(c(as.POSIXct("1840-01-01 00:00:00"), 
+    #                 as.POSIXct("2000-01-01 12:00:00"))) +
+    ggplot2::scale_alpha_manual(
+      values = c("Average" = 1, "Wet" = 0.5, "Dry" = 0.5),
+      guide = FALSE
+      ) +
+    # ggplot2::scale_size_manual(
+    #     values = c("Average" = 3, "Wet" = 2, "Dry" = 2),
+    #     guide = FALSE
+    #   ) +
+    ggplot2::scale_color_manual(
+      values = c("Wet" = "dodgerblue", "Average" = "black", "Dry" = "darkred"),
+      guide = ggplot2::guide_legend(
+        direction = "vertical",
+        title.position = "top"
+      )
+    ) +
+    ggplot2::labs(
+      title = paste0("Right-o-graph"),
+      # title = paste0("Right-o-graph (District: ", district_lab, ")"),
+      # subtitle = "Water rights above priority date lines are called out by more senior rights at or below the priority date lines",
+      # caption = "Black horizontal line represents average % out of priority over the period of record",
+      x     = "",
+      y     = "Priority Date",
+      color = "Year type"
+    ) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      plot.title        = ggplot2::element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.subtitle     = ggplot2::element_text(size = 14, hjust = 0.5),
+      legend.title      = ggplot2::element_text(size = 18, hjust = 0.5, face = "bold"),
+      legend.text       = ggplot2::element_text(size = 16),
+      axis.title        = ggplot2::element_text(size = 16, face = "bold"),
+      axis.text         = ggplot2::element_text(size = 16),
+      legend.key.width  = unit(1.5, "cm"),
+      legend.text.align = 0,
+      legend.key.height = unit(1, "cm"),
+      legend.position = c(0.05, 0.05),
+      legend.justification = c(0, 0),
+      legend.box.background = ggplot2::element_rect(colour = "black", size = 2)
+    ) 
+  
+  return(rightograph)
+  
+  
+}
 make_avg_yeartype_rightograph_plot <- function(df, type) {
   
   # df <- weekly_calls
@@ -148,7 +259,6 @@ make_avg_yeartype_rightograph_plot <- function(df, type) {
       legend.text.align = 0,
       legend.key.height = unit(1, "cm")
     ) 
-  rightograph
   return(rightograph)
   
   
@@ -1320,7 +1430,7 @@ find_month_starts <- function(dates, month = "4") {
 #             group = c("Predictor Variables", "Predictor Variables", "Prediction", "Model Equation", "Performance")
 #           )
 # 
-# # model_table <-
+# # # model_table <-
 #   df_tbl %>%
 #   gt::gt(rowname_col = "row_name", groupname_col = "group") %>%
 #   gt::tab_header(
@@ -1352,11 +1462,16 @@ find_month_starts <- function(dates, month = "4") {
 #   gt::tab_style(
 #       style = gt::cell_fill(color = "#3EB489", alpha = 0.7), # highlight R squared value
 #       locations = gt::cells_body(rows = 3, columns = "col2") # which cell to highlight
-#     ) %>% 
+#     ) %>%
 #     gt::tab_style(
 #       style = gt::cell_fill(color = "indianred", alpha = 0.7), # highlight prediction value
 #       locations = gt::cells_body(rows = c(1, 2), columns = "col2") # column and row of cell to highlight
-#     )
+#     ) %>% 
+#   # gt::tab
+#   gt::tab_options(
+#     # style(gt::cell_text(size = px(16)))
+#     table.font.size = 18
+#   )
 
 
 #######################################
