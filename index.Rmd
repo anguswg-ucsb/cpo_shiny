@@ -55,17 +55,17 @@ cat <- readRDS("eddi_catalog.rds") %>%
   update_duration()
 
 # # get new EDDI 30 Day data when application loads
-new_eddi <- eddi_from_catalog(
-  catalog    = cat,
-  aoi        = dplyr::mutate(dists,
-                             district = as.integer(district)),
-  varname    = c("eddi30d", "eddi1y"),
-  # varname    = "eddi30d",
-  start_date = Sys.Date() - 365,
-  end_date   = Sys.Date(),
-  name_col   = "district",
-  verbose    = FALSE
-  )
+# new_eddi <- eddi_from_catalog(
+#   catalog    = cat,
+#   aoi        = dplyr::mutate(dists,
+#                              district = as.integer(district)),
+#   varname    = c("eddi30d", "eddi1y"),
+#   # varname    = "eddi30d",
+#   start_date = Sys.Date() - 365,
+#   end_date   = Sys.Date(),
+#   name_col   = "district",
+#   verbose    = FALSE
+#   )
 
 # saveRDS(new_eddi, "updated_eddi_data.rds")
 # new_eddi <- readRDS("updated_eddi_data.rds")
@@ -1146,3 +1146,53 @@ tags$style(HTML("
                 }
                 "))
 ```
+
+
+More information
+===================================
+
+Column
+--------------------------------
+#### **About the Data**
+
+The data behind this dashboard comes from two sources:
+
+1. The Colorado Decision Support System ([CDSS](https://dwr.state.co.us/rest/get/help)) API portal, which contains comprehensive administration data for every water right in Colorado.
+
+2. The [gridMET](https://github.com/mikejohnson51/climateR) climatological dataset which offers daily high-spatial resolution surface meteorological data covering the contiguous United States from 1979 to yesterday. 
+
+
+
+The data sourced from CDSS comes from the "callanalysisbywdid" API request, which performs a call analysis that returns a time series showing the percentage of each day that a specified WDID was out of priority and the downstream call in priority. The appropriation date of the downstream call in priority is what we refer to as the "call year".
+
+Each water rights call analysis is composed of multiple WDIDs to reflect the potential diversity of output based on location in the basin (e.g., the call can be affected by gains (inflow) and losses (diversions) within a district). In the historical analysis (1970-2022), South Platte River Basin flows were categorized as wet (upper tercile), average (middle tercile) or dry (lower tercile) based on average annual flow at the Kersey gage (USGS 06754000). Figure 1 shows the average call for three WDIDs in District 5 (St. Vrain) in the three subplots from left to right (WDIDs 0500796, 0502131, 0504081, respectively). Within each WDID subplot, the average call for wet, average, and dry years is shown with a blue, black, and red line, respectively.
+
+For each of these WDIDs, we see that the average call year is earliest (i.e. called by a more senior water rights holder) during summer months (July-September) indicating supply-limited conditions where water use is most constrained.
+
+
+*Note:* In some instances, the senior water rights holder placing the call was the South Platte River Compact, with a priority of 12/31/1849 in CDSS, which represents the instream flow agreement between Colorado and Nebraska such that that Colorado delivers 120 cfs in the South Platte River at the Stateline from April 1 to October 15. We note that although CDSS documentation states that this does not “call” water rights outside of District 64 (i.e., it cannot call out a more junior right in the Saint Vrain River Basin (District 5) to meet the minimum flow delivery), there are many records in CDSS where this does occur, but only from 1970-2002.
+
+Column 
+-----------------------
+
+```{r pic1, echo = FALSE, fig.align = 'center'}
+
+knitr::include_graphics("figures/dist5_callyear.png")
+
+```
+
+<center>*Figure 1. Average Call Analysis by WDID and year type within District 5.*
+
+
+
+<!-- ```{r pic2, echo = FALSE, fig.align = 'center'} -->
+
+<!-- knitr::include_graphics("figures/dist5all_callyear.png") -->
+
+<!-- ``` -->
+
+
+
+<!-- <center>*Figure 2. Average call year by year type across all of District 5.* -->
+
+
