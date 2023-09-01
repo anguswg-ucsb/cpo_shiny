@@ -884,7 +884,7 @@ make_new_observed_plot2 <- function(
 #' @param verbose logical, should messages print or not. Default is FALSE, no messages print
 #' @return dataframe with weekly average climate variable values for each polygon in the provided aoi SF object
 #' @export
-eddi_from_catalog2 <- function(
+eddi_from_catalog <- function(
     catalog    = NULL,
     aoi        = NULL,
     varname    = NULL,
@@ -896,204 +896,16 @@ eddi_from_catalog2 <- function(
 ) {
   
   # catalog    = cat
-  # aoi        = dplyr::mutate(dists, 
+  # aoi        = dplyr::mutate(dists,
   #                            district = as.integer(district))
-  # # varname    = "eddi30d"
+  # 
   # varname    = c("eddi30d", "eddi1y")
+  # # varname    = "eddi30d",
   # start_date = Sys.Date() - 365
-  # # start_date = Sys.Date() - (365*5)
   # end_date   = Sys.Date()
   # name_col   = "district"
   # wide       = TRUE
-  # verbose    = TRUE
-  
-  # rm(shp, aoi, varname, start_date, end_date, wide, verbose)
-  # aoi = dists2
-  # varname = "eddi30d"
-  # start_date = start
-  # end_date = end
-  # name_col = "district"
-  # wide       = TRUE
-  # verbose = TRUE
-  
-  # if no varname, use catalog variable name
-  if(is.null(varname)) {
-    varname <- unique(catalog$variable)
-  }
-  
-  # if start date is NULL
-  if(is.null(start_date)) {
-    
-    start_date = "1980-01-01"
-    
-  }
-  
-  # if end date is NULL
-  if(is.null(end_date)) {
-    
-    end_date = Sys.Date() - 1
-    
-  }
-  
-  # make name column name lowercase
-  name_col <- tolower(name_col)
-  
-  # make sure AOI is in correct CRS and is a MULTIPOLYGON
-  # # aoi <-
-  # shp <-
-  #   aoi %>%
-  #   sf::st_transform(4326) %>%
-  #   sf::st_cast("MULTIPOLYGON")
-  
-  # make lower case column names
-  names(aoi) <- tolower(names(aoi))
-  
-  message(paste0(
-    "Getting gridMET data...\n",
-    "-------------------------",
-    "\nStart date: ", start_date,
-    "\nEnd date: ", end_date
-  ))
-  
-  # get daily gridMET data
-  gridmet <- climateR::dap(
-    catalog   = catalog,
-    AOI       = aoi,
-    startDate = start_date,
-    endDate   = end_date,
-    verbose   = verbose
-  )
-  
-  # district names
-  district_names <- paste0(aoi[[name_col]])
-  
-  # remove gridMET "category" data that is accidently returned
-  gridmet <- gridmet[names(gridmet) != "category"]
-  
-  message(paste0("Getting April 1/May 1  EDDI values..."))
-  
-  # mask and crop variables for each polygon in 'aoi'
-  eddi_rasters <- lapply(1:length(gridmet), function(i) {
-    # i = 1
-    # loop over all polygons and crop/mask SpatRasters
-    lapply(seq_len(nrow(aoi)), function(x) {
-      # x = 1
-      raster_date_snapshots(
-        raster   = gridmet[[i]],
-        polygon  = aoi[x, ]
-      )
-    }
-    ) %>%
-      stats::setNames(district_names)
-    
-  }) %>%
-    stats::setNames(varname)
-  
-  # eddi_rasters %>% names()
-  # eddi_rasters$eddi30d %>% names()
-  # eddi_rasters$eddi1y %>% names()
-  
-  message(paste0("Calculating means..."))
-  
-  tidy_gridmet <- lapply(seq_along(eddi_rasters), function(i) {
-    
-    # lapply counter message
-    if(verbose) {
-      message(paste0(i, "/", length(eddi_rasters)))
-    }
-    
-    lapply(seq_along(eddi_rasters[[i]]), function(x) {
-      
-      eddi_rasters[[i]][[x]] %>%
-        as.data.frame(xy = F) %>%
-        dplyr::summarise(dplyr::across(dplyr::everything(), mean)) %>%
-        tidyr::pivot_longer(cols = dplyr::everything()) %>%
-        tidyr::separate(name, c("variable", "date"), sep = "_", extra = "merge") %>%
-        dplyr::mutate(
-          date      = as.Date(gsub("_", "-", date)),
-          district  = names(eddi_rasters[[i]])[x]
-          # units     = unique(terra::units(eddi_rasters[[i]][[x]]))
-        ) %>%
-        dplyr::relocate(district, date, variable, value)
-      
-    }) %>%
-      dplyr::bind_rows()
-    
-  }) %>%
-    dplyr::bind_rows()
-  
-  # plot to check outputs
-  # tidy_gridmet %>%
-  #   # dplyr::filter(district %in% c(1)) %>%
-  #   dplyr::filter(district %in% c(1, 2, 3, 4, 5, 6)) %>%
-  #   dplyr::mutate(
-  #     year  = lubridate::year(date),
-  #     month = lubridate::month(date, label = T)
-  #   ) %>%
-  #   ggplot2::ggplot() +
-  #   ggplot2::geom_line(ggplot2::aes(x = year, y = value, color = variable)) +
-  #   ggplot2::facet_grid(month~district)
-  
-  # if wide is TRUE, then pivot the table wider and return that
-  if(wide) {
-    
-    tidy_gridmet <-
-      tidy_gridmet %>%
-      dplyr::mutate(
-        year     = format(as.Date(date), "%Y"),
-        new_cols = paste0(
-          ifelse(format(as.Date(date), "%m") == "04", "apr", "may"),
-          "_",
-          variable
-        )
-      ) %>%
-      dplyr::select(-variable, -date) %>%
-      tidyr::pivot_wider(
-        # id_cols     = c(year, district),
-        names_from  = "new_cols",
-        values_from = "value"
-      ) %>%
-      dplyr::mutate(
-        district = dplyr::case_when(
-          as.numeric(district) < 10 ~ paste0("0", district),
-          TRUE                      ~ paste0(district)
-        )
-      )
-  } else {
-    
-    tidy_gridmet <-
-      tidy_gridmet %>%
-      dplyr::mutate(
-        month    = ifelse(format(as.Date(date), "%m") == "04", "apr", "may"),
-      ) %>%
-      dplyr::relocate(district, date, month, variable, value)
-    
-  }
-  
-  return(tidy_gridmet)
-}
-
-#' Get a single EDDI data value for each year on April 1 and May 1
-#'
-#' @param aoi SF
-#' @param varname Charcter vector, climateR::params for a list of gridMET climate parameters to choose from
-#' @param start_date starting date string (YYYY-MM-DD ). Defaults to "1980-01-01"
-#' @param end_date date string (YYYY-MM-DD ). Defaults to yesterday.
-#' @param name_col character, name of column in SF object that that uniquely identifies each polygon. Default is "district".
-#' @param wide logical, whether data should be return wide (column for each climate variable) or long (a column naming the variable and a column represnting the value of the variable). Default is TRUE, returns a wide dataframe
-#' @param verbose logical, should messages print or not. Default is FALSE, no messages print
-#' @return dataframe with weekly average climate variable values for each polygon in the provided aoi SF object
-#' @export
-eddi_from_catalog <- function(
-    catalog    = NULL,
-    aoi        = NULL,
-    varname    = NULL,
-    start_date = NULL,
-    end_date   = NULL,
-    name_col   = "district",
-    wide       = TRUE,
-    verbose    = FALSE
-) {
+  # verbose    = FALSE
   
   # end = Sys.Date()
   # start = Sys.Date() - 365
@@ -1162,14 +974,6 @@ eddi_from_catalog <- function(
     endDate   = end_date,
     verbose   = verbose
   )
-  
-  # gridmet <- climateR::getGridMET(
-  #   AOI       = aoi,
-  #   varname   = varname,
-  #   startDate = start_date,
-  #   endDate   = end_date,
-  #   verbose   = verbose
-  # )
   
   # district names
   district_names <- paste0(aoi[[name_col]])

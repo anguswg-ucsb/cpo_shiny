@@ -39,55 +39,36 @@ source('final_utils.R')
 ```
 
 ```{r context="server"}
-# # water rights data
-# water_rights <- readr::read_csv("detrended_all_data_final_v2.csv")
-
 # linear regression lookup table
-lm_lookup <- readRDS("cpo_linear_regression_lookup.rds")
-# lm_lookup <- readr::read_csv("cpo_linear_regression_lookup_v2.csv")
-# saveRDS(lm_lookup, "cpo_linear_regression_lookup.rds")
+lm_lookup <- readRDS("data/cpo_linear_regression_lookup.rds")
 
 # subset of districts
-dists <- sf::read_sf("water_districts_subset.gpkg")
+dists <- sf::read_sf("data/water_districts_subset.gpkg")
 
 # catalog entry for getting EDDI data
-cat <- readRDS("eddi_catalog.rds") %>% 
-  update_duration()
+cat <- readRDS("data/eddi_catalog.rds") %>% 
+  update_duration(days_from_today = 30)
 
-# # get new EDDI 30 Day data when application loads
-# new_eddi <- eddi_from_catalog(
-#   catalog    = cat,
-#   aoi        = dplyr::mutate(dists,
-#                              district = as.integer(district)),
-#   varname    = c("eddi30d", "eddi1y"),
-#   # varname    = "eddi30d",
-#   start_date = Sys.Date() - 365,
-#   end_date   = Sys.Date(),
-#   name_col   = "district",
-#   verbose    = FALSE
-#   )
-
-# saveRDS(new_eddi, "updated_eddi_data.rds")
-# new_eddi <- readRDS("updated_eddi_data.rds")
+# # # get new EDDI 30 Day data when application loads
+new_eddi <- eddi_from_catalog(
+  catalog    = cat,
+  aoi        = dplyr::mutate(dists,
+                             district = as.integer(district)),
+  varname    = c("eddi30d", "eddi1y"),
+  start_date = Sys.Date() - 365,
+  end_date   = Sys.Date(),
+  name_col   = "district",
+  verbose    = FALSE
+  )
 
 # average yeartype data
-# avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype2.rds")
-avg_yeartype <- readRDS("avg_weekly_calls_by_yeartype.rds") %>% 
-     dplyr::mutate(
-      year_type = factor(year_type, levels = c("Dry", "Average", "Wet"))
-    )
+avg_yeartype <- readRDS("data/avg_weekly_calls_by_yeartype.rds") 
 
 # data used to generate linear regression models
-mod_df <- readRDS("mlr_model_data.rds")
+mod_df <- readRDS("data/mlr_model_data.rds")
 
 #  list of linear regression models and metrics
-lm_list <- readRDS("mlr_model_list.rds")
-
-# lm_list <- make_lm_list(df = mod_df)
-# saveRDS(lm_list, "data/lin_reg_model_list.rds")
-
-# lm_list <- readRDS("data/lin_reg_model_list2.rds")
-# lm_out <- make_lm(model_data = dist_mod_df())
+lm_list <- readRDS("data/mlr_model_list.rds")
 
 # base leaflet map on page 1
 output$baseMap       <- leaflet::renderLeaflet({ dist_basemap(shp = dists) })
@@ -131,7 +112,6 @@ sub_dist1 <- shiny::reactive({
 
 ```{r, context = "server"}
 model_dist_id <- shiny::reactive({
-   # as.numeric(input$baseMap_shape_click$id)
    input$modelBaseMap_shape_click$id
 })
 ```
@@ -469,16 +449,6 @@ Column {data-width=500}
 ---------------------------------------------------------
 ### District
 ```{r}
-# 
-# shinyjs::onevent("hover", id = "districtValueBoxMap1")
-#  onclick('clickdiv', showModal(modalDialog(
-#     title = "Your title",
-#     renderDataTable(data)
-#   )))
-
-# flexdashboard::valueBoxOutput("districtValueBoxMap1") %>% 
-#   bsplus::bs_embed_tooltip(title = "I'm a tooltip", placement = "bottom")
-
 flexdashboard::valueBoxOutput("districtValueBoxMap1") 
 shinyBS::bsPopover(
   "districtValueBoxMap1",
@@ -562,12 +532,9 @@ shiny::observeEvent(input$baseMap_shape_click, {
               leaflet::clearMarkers() %>%
               leaflet::clearShapes() %>%
               leaflet::clearGroup(c("subdist1")) %>%
-                # leaflet::removeShape(layerId = levelpathi) %>%
                 leaflet::addPolygons(
                       data         = dists,
                       fillColor    = 'white',
-                      # fillColor = 'grey',
-                      # fillColor = ~pal_fact(BASIN),
                       fillOpacity  = 0.7,
                       col          = "black",
                       opacity      = 1,
@@ -699,13 +666,7 @@ Current EDDI is provided. To predict an average summer call year, enter a value 
 
 ```{r, context = "server"}
 shiny::textInput(inputId = "newDataInput", 
-                 # label = predictor_label(),
                  label   = "...",
-                 # label   = ifelse(
-                 #              is.null(predictor_str()), 
-                 #              "Select a district to make a provide SWE/NRCS Forecast data...", 
-                 #              paste0("Enter ", predictor_str(), " value...")
-                 #                   ),
                  value   = NULL,
                  placeholder = NULL
                  )
@@ -746,9 +707,6 @@ tags$style(HTML("
 ```
 
 ```{r context="server"}
-# {r context="server"}
-# flexdashboard::valueBox(value = model_dist_id())
-# ("primary", "info", "success", "warning", "danger")
 output$districtValueBoxMap2 <- flexdashboard::renderValueBox(
   flexdashboard::valueBox(
     value = paste0("District: "),
@@ -759,8 +717,6 @@ output$districtValueBoxMap2 <- flexdashboard::renderValueBox(
 
 # Value box server
 shiny::observeEvent(model_dist_id(), {
-# shiny::observeEvent(event_trigger(), {
-      # print("observer4")
 
       # Public Safety value box server
       output$districtValueBoxMap2 <- flexdashboard::renderValueBox(
@@ -794,35 +750,19 @@ leaflet::leafletOutput("modelBaseMap")
 ```
 
 ```{r context="server"}
-# # # Clicking on map 1 outputs Value boxes on both pages + catchment polygons + Dat table + success panel
-# # # observeEvent(input$districtMapMLR_click, {
-# # shiny::observeEvent(input$modelBaseMap_shape_click, {
+# # # Clicking on map 1 updates map polygons, highlighting the clicked polygon, and updates the primary predictor input variable that the user is expected to input in textInput
 shiny::observeEvent(model_dist_id(), {
    if(is.null(model_dist_id())) {
 
      return(NULL)
 
    } else {
-
-       
-          #  print(paste0("Map 2 latitude ---> ", model_map_click()$lat))
-          #  print(paste0("Map 2 longitude ---> ", model_map_click()$lng))
-          # # print(paste0("Subsetting mainstems to HUC4: ",  model_dist_id()))
-          # print(paste0("Page 2 district selection ---> ", model_dist_id()))
-          # 
-          # print(paste0("Highlighting district ", model_dist_id(), " based on districtInput change..."))
-
-          # # subset to water district of interest
-          # sub_dist2 <- dists[dists$DISTRICT == model_dist_id(), ]
      
           print(paste0("===== model_dist_id: ", model_dist_id(), " ====="))
-     
           print(paste0("===== predictor_str(): ", predictor_str(), " ====="))
           print(paste0("===== predictor_label(): ", predictor_label(), " ====="))
-          
           print(paste0("===== predictor_str2(): ", predictor_str2(), " ====="))
           print(paste0("===== predictor_long_str2(): ", predictor_long_str2(), " ====="))
-          
           print(paste0("===== eddi_variable(): ", eddi_variable(), " ====="))
           print(paste0("===== eddi_val(): ", eddi_val(), " ====="))
           
@@ -833,12 +773,9 @@ shiny::observeEvent(model_dist_id(), {
               leaflet::clearMarkers() %>%
               leaflet::clearShapes() %>%
               leaflet::clearGroup(c("subdist2")) %>%
-                # leaflet::removeShape(layerId = levelpathi) %>%
                 leaflet::addPolygons(
                       data         = dists,
                       fillColor    = 'white',
-                      # fillColor = 'grey',
-                      # fillColor = ~pal_fact(BASIN),
                       fillOpacity  = 0.7,
                       col          = "black",
                       opacity      = 1,
@@ -853,11 +790,8 @@ shiny::observeEvent(model_dist_id(), {
                                         )
                   ) %>%
                 leaflet::addPolygons(
-                      # data         = sub_dist2,
                     data         = sub_dist2(),
                     fillColor    = '#3EB489',
-                    # fillColor = 'grey',
-                    # fillColor = ~pal_fact(BASIN),
                     fillOpacity  = 0.5,
                     col          = "black",
                     opacity      = 1,
@@ -872,13 +806,15 @@ shiny::observeEvent(model_dist_id(), {
                                           "font-weight" = "1000")
                                       )
                 )
-
-             shiny::observe({
-
-                  if(is.null(dist_mod_df())) {
-                      print(paste0("dist_mod_df is NULL"))
-                       return(NULL)
-                     } else {
+            
+              
+             # Observer that watches for changes in the forecast variables and updates scatter plots accordingly
+             # shiny::observe({
+             # 
+             #      if(is.null(dist_mod_df())) {
+             #          print(paste0("dist_mod_df is NULL"))
+             #           return(NULL)
+             #         } else {
 
                      #######################################################################
                      # ---- RENDER OBSERVED POINTS AND OBSERVED EDDI AND FORECAST PLOTS ----
@@ -920,12 +856,8 @@ shiny::observeEvent(model_dist_id(), {
                     #                   caption = " "
                     #                   )
                     #               )
-                     }
-
-
-               # print(paste0("----> current_district: ", model_dist_id()))
-
-               })
+               #       }
+               # })
 
              }
           })
@@ -995,9 +927,6 @@ shiny::observeEvent(input$newDataInputButton, {
                                   )
                                 ),
                 subtitle = gt::md(paste0("District: ", model_dist_id()))
-                # subtitle = gt::md(paste0("**District: ", model_dist_id(), "**"))
-                # title = md(paste0("**District: ", district_num, "**")),
-                # subtitle = md(paste0(district_name))
               ) %>%
               gt::tab_style(
                 style = list(
@@ -1007,8 +936,6 @@ shiny::observeEvent(input$newDataInputButton, {
               ) %>%
               gt::tab_style(
                 style = gt::cell_text(weight = "bold"),
-                # locations = cells_column_labels(columns = "group")
-                # locations = cells_body(columns = group)
                 locations = gt::cells_row_groups()
               ) %>% 
               gt::tab_style( # highlight R squared value
@@ -1033,25 +960,19 @@ shiny::observeEvent(input$newDataInputButton, {
                 table.font.size = 20
                 )
             
+          # Render the model results/performance GT table
           output$gtModelTable <- gt::render_gt({
+            
             model_table
+            
           })
 
-          ##########################################
-          ##########################################
-          
-          # # pred$predictor_long_name1 <- lm_l
-          # # make a prediction with new data from user input
-          # pred <- make_mlr_prediction(
-          #   model     = model_obj(),
-          #   pred1 = predictor_str1(),
-          #   pred2 = predictor_str2(),
-          #   val1       = as.numeric(input$newDataInput),
-          #   val2  = eddi_val()
-          # )
+          #############################################################
+          # ----- OLD CODE FOR DISPLAYING REGRESSION SCATTERPLOTS -----
+          #############################################################
 
 
-          print(paste0("prediction value: ", pred$fitted[1]))
+          # print(paste0("prediction value: ", pred$fitted[1]))
 
           # # update the prediction value Value Box
           # output$predictionValueBox <- flexdashboard::renderValueBox(
